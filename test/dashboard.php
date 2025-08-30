@@ -54,7 +54,7 @@ $createTables = [
         size VARCHAR(20),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )",
-    "CREATE TABLE IF NOT EXISTS reviews (
+    /*"CREATE TABLE IF NOT EXISTS reviews (
         id INT AUTO_INCREMENT PRIMARY KEY,
         product_id INT NOT NULL,
         user_id INT NOT NULL,
@@ -62,7 +62,7 @@ $createTables = [
         comment TEXT,
         status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )",
+    )",*/
     "CREATE TABLE IF NOT EXISTS categories (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(100) NOT NULL UNIQUE,
@@ -400,12 +400,10 @@ $recentActivities = $pdo->query("SELECT * FROM admin_logs ORDER BY created_at DE
             <li><a href="products.php">📦 Product Management</a></li>
             <li><a href="orders.php">🛒 Order Management</a></li>
             <li><a href="customers.php">👥 Customer Management</a></li>
-            <li><a href="categories.php">📂 Categories</a></li>
             <li><a href="inventory.php">📊 Inventory</a></li>
             <li><a href="reviews.php">⭐ Reviews</a></li>
             <li><a href="coupons.php">🎫 Coupons</a></li>
             <li><a href="reports.php">📈 Reports</a></li>
-            <li><a href="settings.php">⚙️ Settings</a></li>
             <li><a href="users.php">👤 Admin Users</a></li>
         </ul>
     </div>
@@ -500,7 +498,6 @@ $recentActivities = $pdo->query("SELECT * FROM admin_logs ORDER BY created_at DE
                 <a href="customers.php" class="action-btn">👥 Manage Customers</a>
                 <a href="inventory.php?low_stock=1" class="action-btn danger">⚠️ Low Stock Alert</a>
                 <a href="reports.php" class="action-btn">📊 Generate Reports</a>
-                <a href="settings.php" class="action-btn">⚙️ Site Settings</a>
             </div>
         </div>
     </div>

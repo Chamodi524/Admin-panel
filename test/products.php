@@ -12,11 +12,56 @@ try {
     die("Connection failed: " . $e->getMessage());
 }
 
+// Define categories and subcategories
+$categories = [
+    'dresses' => [
+        'mini-dresses' => 'Mini Dresses',
+        'midi-dresses' => 'Midi Dresses',
+        'maxi-dresses' => 'Maxi Dresses',
+        'casual-dresses' => 'Casual Dresses',
+        'party-dresses' => 'Party Dresses',
+        'formal-dresses' => 'Formal Dresses',
+        'summer-dresses' => 'Summer Dresses'
+    ],
+    'tops' => [
+        'blouses' => 'Blouses',
+        'shirts' => 'Shirts',
+        'crop-tops' => 'Crop Tops',
+        'tank-tops' => 'Tank Tops',
+        'sweaters' => 'Sweaters',
+        'cardigans' => 'Cardigans'
+    ],
+    'bottoms' => [
+        'jeans' => 'Jeans',
+        'pants' => 'Pants',
+        'skirts' => 'Skirts',
+        'shorts' => 'Shorts',
+        'leggings' => 'Leggings'
+    ],
+    'rompers-jumpsuits' => [
+        'rompers' => 'Rompers',
+        'jumpsuits' => 'Jumpsuits',
+        'playsuits' => 'Playsuits'
+    ],
+    'office-work' => [
+        'blazers' => 'Blazers',
+        'office-dresses' => 'Office Dresses',
+        'work-pants' => 'Work Pants',
+        'office-blouses' => 'Office Blouses'
+    ]
+];
+
 // Handle AJAX requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     
     switch ($_POST['action']) {
+        case 'get_subcategories':
+            $category = $_POST['category'] ?? '';
+            $subcategories = $categories[$category] ?? [];
+            echo json_encode(['success' => true, 'subcategories' => $subcategories]);
+            exit;
+            
         case 'add_product':
             try {
                 $stmt = $pdo->prepare("INSERT INTO products (name, category, subcategory, price, original_price, image, description, availability, is_new, is_sale) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -129,9 +174,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 $stmt = $pdo->query("SELECT p.*, GROUP_CONCAT(ps.size ORDER BY ps.size) as sizes FROM products p LEFT JOIN product_sizes ps ON p.id = ps.product_id GROUP BY p.id ORDER BY p.created_at DESC");
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get categories
-$stmt = $pdo->query("SELECT * FROM categories WHERE is_active = 1 ORDER BY name");
-$categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Helper function to get category display name
+function getCategoryDisplayName($category) {
+    $categoryNames = [
+        'dresses' => 'Dresses',
+        'tops' => 'Tops',
+        'bottoms' => 'Bottoms',
+        'rompers-jumpsuits' => 'Rompers & Jumpsuits',
+        'office-work' => 'Office & Work'
+    ];
+    return $categoryNames[$category] ?? ucfirst($category);
+}
 ?>
 
 <!DOCTYPE html>
@@ -690,12 +743,21 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             
                             <div class="product-info">
                                 <h3 class="product-name"><?php echo htmlspecialchars($product['name']); ?></h3>
-                                <p class="product-category"><?php echo htmlspecialchars($product['category']); ?><?php echo $product['subcategory'] ? ' / ' . htmlspecialchars($product['subcategory']) : ''; ?></p>
+                                <p class="product-category">
+                                    <?php echo getCategoryDisplayName($product['category']); ?>
+                                    <?php if ($product['subcategory']): ?>
+                                        <?php 
+                                        // Get subcategory display name
+                                        $subcategoryDisplay = $categories[$product['category']][$product['subcategory']] ?? ucfirst(str_replace('-', ' ', $product['subcategory']));
+                                        echo ' / ' . htmlspecialchars($subcategoryDisplay); 
+                                        ?>
+                                    <?php endif; ?>
+                                </p>
                                 
                                 <div class="product-price">
-                                    $<?php echo number_format($product['price'], 2); ?>
+                                    Rs <?php echo number_format($product['price'], 2); ?>
                                     <?php if ($product['original_price'] && $product['original_price'] > $product['price']): ?>
-                                        <span class="original-price">$<?php echo number_format($product['original_price'], 2); ?></span>
+                                        <span class="original-price">Rs <?php echo number_format($product['original_price'], 2); ?></span>
                                     <?php endif; ?>
                                 </div>
                                 
@@ -749,17 +811,21 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="form-row">
                         <div class="form-group">
                             <label for="productCategory">Category *</label>
-                            <select id="productCategory" name="category" required>
+                            <select id="productCategory" name="category" required onchange="updateSubcategories()">
                                 <option value="">Select Category</option>
-                                <?php foreach ($categories as $category): ?>
-                                    <option value="<?php echo htmlspecialchars($category['name']); ?>"><?php echo htmlspecialchars($category['name']); ?></option>
-                                <?php endforeach; ?>
+                                <option value="dresses">Dresses</option>
+                                <option value="tops">Tops</option>
+                                <option value="bottoms">Bottoms</option>
+                                <option value="rompers-jumpsuits">Rompers & Jumpsuits</option>
+                                <option value="office-work">Office & Work</option>
                             </select>
                         </div>
                         
                         <div class="form-group">
                             <label for="productSubcategory">Subcategory</label>
-                            <input type="text" id="productSubcategory" name="subcategory">
+                            <select id="productSubcategory" name="subcategory">
+                                <option value="">Select Subcategory</option>
+                            </select>
                         </div>
                     </div>
                     
@@ -842,6 +908,9 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
         let isEditing = false;
         let currentProductId = null;
 
+        // Categories and subcategories data
+        const categoriesData = <?php echo json_encode($categories); ?>;
+
         // Search functionality
         document.getElementById('searchInput').addEventListener('input', function() {
             const searchTerm = this.value.toLowerCase();
@@ -859,12 +928,32 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
             });
         });
 
+        // Update subcategories based on selected category
+        function updateSubcategories() {
+            const categorySelect = document.getElementById('productCategory');
+            const subcategorySelect = document.getElementById('productSubcategory');
+            const selectedCategory = categorySelect.value;
+            
+            // Clear existing options
+            subcategorySelect.innerHTML = '<option value="">Select Subcategory</option>';
+            
+            if (selectedCategory && categoriesData[selectedCategory]) {
+                Object.entries(categoriesData[selectedCategory]).forEach(([key, value]) => {
+                    const option = document.createElement('option');
+                    option.value = key;
+                    option.textContent = value;
+                    subcategorySelect.appendChild(option);
+                });
+            }
+        }
+
         // Modal functions
         function openModal() {
             document.getElementById('productModal').style.display = 'block';
             document.getElementById('modalTitle').textContent = 'Add New Product';
             document.getElementById('productForm').reset();
             document.getElementById('productId').value = '';
+            document.getElementById('productSubcategory').innerHTML = '<option value="">Select Subcategory</option>';
             isEditing = false;
             currentProductId = null;
             resetSizes();
@@ -1024,7 +1113,15 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     document.getElementById('productId').value = product.id;
                     document.getElementById('productName').value = product.name;
                     document.getElementById('productCategory').value = product.category;
-                    document.getElementById('productSubcategory').value = product.subcategory || '';
+                    
+                    // Update subcategories first
+                    updateSubcategories();
+                    
+                    // Then set subcategory value
+                    setTimeout(() => {
+                        document.getElementById('productSubcategory').value = product.subcategory || '';
+                    }, 100);
+                    
                     document.getElementById('productPrice').value = product.price;
                     document.getElementById('productOriginalPrice').value = product.original_price || '';
                     document.getElementById('productImage').value = product.image || '';
@@ -1101,7 +1198,6 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
-            // Add any initialization code here
             console.log('Product Management Dashboard loaded successfully');
         });
     </script>
