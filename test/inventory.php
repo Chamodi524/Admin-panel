@@ -12,6 +12,8 @@ try {
     die("Connection failed: " . $e->getMessage());
 }
 
+
+
 // Create inventory_log table if it doesn't exist
 $createLogTable = "
 CREATE TABLE IF NOT EXISTS `inventory_log` (
@@ -216,6 +218,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fashion Inventory Management System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -238,80 +241,167 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             padding: 30px;
         }
 
-        /* Formal Header */
-        .formal-header {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-            color: white;
-            padding: 40px 0;
-            margin: -30px -30px 40px -30px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .formal-header::before {
-            content: '';
-            position: absolute;
+        /* Admin Header - Modern Design */
+        .admin-header {
+            background: white;
+            padding: 15px 30px;
+            margin: -30px -30px 30px -30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            position: sticky;
             top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20"><defs><linearGradient id="a" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="%23ffffff" stop-opacity="0.1"/><stop offset="1" stop-color="%23ffffff" stop-opacity="0"/></linearGradient></defs><rect width="11" height="20" fill="url(%23a)" rx="5"/><rect x="22" width="11" height="20" fill="url(%23a)" rx="5"/><rect x="44" width="11" height="20" fill="url(%23a)" rx="5"/><rect x="66" width="11" height="20" fill="url(%23a)" rx="5"/><rect x="88" width="11" height="20" fill="url(%23a)" rx="5"/></svg>') repeat;
-            opacity: 0.1;
+            z-index: 1000;
         }
 
-        .formal-header-content {
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 0 30px;
-            position: relative;
-            z-index: 1;
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1e3a8a;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+
+        .page-title {
+            font-size: 20px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .header-center {
+            flex-grow: 1;
             text-align: center;
         }
 
-        .company-logo {
-            display: inline-block;
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-            width: 80px;
-            height: 80px;
+        .system-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1e3a8a;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .header-icon {
+            position: relative;
+            font-size: 20px;
+            color: #555;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .header-icon:hover {
+            background: #f0f5ff;
+            color: #1e3a8a;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #e74c3c;
+            color: white;
+            font-size: 12px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 36px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            margin: 0 auto 20px;
-        }
-
-        .company-name {
-            font-size: 48px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        }
-
-        .company-subtitle {
-            font-size: 24px;
-            font-weight: 300;
-            opacity: 0.9;
-            margin-bottom: 15px;
-        }
-
-        .system-title {
-            font-size: 32px;
             font-weight: 600;
-            color: #45b7d1;
-            margin-bottom: 10px;
         }
 
-        .current-date-time {
-            font-size: 20px;
-            opacity: 0.8;
-            font-weight: 300;
+        .admin-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .admin-profile:hover {
+            background: #f0f5ff;
+        }
+
+        .admin-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .admin-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            width: 200px;
+            z-index: 1000;
+            display: none;
+            overflow: hidden;
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #555;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .dropdown-item:hover {
+            background: #f0f5ff;
+            color: #1e3a8a;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #eee;
+            margin: 5px 0;
         }
 
         /* Main Content Styling */
@@ -712,17 +802,9 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                 padding: 20px;
             }
             
-            .formal-header {
+            .admin-header {
                 margin: -20px -20px 30px -20px;
-                padding: 30px 0;
-            }
-            
-            .company-name {
-                font-size: 36px;
-            }
-            
-            .system-title {
-                font-size: 26px;
+                padding: 15px 20px;
             }
             
             .content-wrapper {
@@ -736,6 +818,10 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             .stats {
                 grid-template-columns: repeat(2, 1fr);
             }
+            
+            .admin-name {
+                display: none;
+            }
         }
 
         @media (max-width: 768px) {
@@ -743,20 +829,19 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                 font-size: 18px;
             }
             
-            .formal-header {
-                padding: 20px 0;
+            .admin-header {
+                padding: 10px 15px;
+                flex-wrap: wrap;
             }
             
-            .company-name {
-                font-size: 28px;
-            }
-            
-            .company-subtitle {
-                font-size: 18px;
+            .header-center {
+                order: 3;
+                width: 100%;
+                margin-top: 10px;
             }
             
             .system-title {
-                font-size: 22px;
+                font-size: 18px;
             }
             
             .stats {
@@ -784,18 +869,76 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                 grid-template-columns: 1fr;
                 text-align: center;
             }
+            
+            .page-title {
+                display: none;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .header-right {
+                gap: 10px;
+            }
+            
+            .header-icon {
+                font-size: 18px;
+                padding: 6px;
+            }
+            
+            .admin-avatar {
+                width: 35px;
+                height: 35px;
+                font-size: 16px;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Formal Header -->
-    <div class="formal-header">
-        <div class="formal-header-content">
-            <div class="company-logo">👗</div>
-            <h1 class="company-name">ELEGANCE FASHION</h1>
-            <p class="company-subtitle">Premium Women's Clothing & Accessories</p>
-            <h2 class="system-title">INVENTORY MANAGEMENT SYSTEM</h2>
-            <p class="current-date-time" id="currentDateTime"></p>
+    <!-- Admin Header -->
+    <div class="admin-header">
+        <div class="header-left">
+            <a href="#" class="logo">
+                <i class="fas fa-tshirt"></i>
+                <span>ALLURA ESTRELLA</span>
+            </a>
+            
+        </div>
+        
+        <div class="header-center">
+            <div class="system-title">Inventory Management System</div>
+        </div>
+        
+        <div class="header-right">
+            <div class="header-icon" title="Notifications">
+                <i class="fas fa-bell"></i>
+                <span class="notification-badge">3</span>
+            </div>
+            
+            <div class="header-icon" title="Settings">
+                <i class="fas fa-cog"></i>
+            </div>
+            
+            <div class="admin-profile" id="profileDropdown">
+                <div class="admin-avatar">A</div>
+                <div class="admin-name">Admin</div>
+                <i class="fas fa-chevron-down"></i>
+                
+                <div class="dropdown-menu" id="profileMenu">
+                    <a href="#" class="dropdown-item">
+                        <i class="fas fa-user"></i>
+                        <span>Profile</span>
+                    </a>
+                    <a href="#" class="dropdown-item">
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <a href="#" class="dropdown-item">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -803,15 +946,15 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
         <div class="content-wrapper">
             <!-- Filters -->
             <div class="filters">
-                <h3 class="filters-header">🔍 Search & Filter Products</h3>
+                <h3 class="filters-header">Search & Filter Products</h3>
                 <form method="GET" class="filters-grid">
                     <div class="form-group">
-                        <label for="search">🔍 Search Products</label>
+                        <label for="search">Search Products</label>
                         <input type="text" id="search" name="search" placeholder="Search by name or ID..." value="<?php echo htmlspecialchars($search); ?>">
                     </div>
                     
                     <div class="form-group">
-                        <label for="main_category">📂 Main Category</label>
+                        <label for="main_category">Main Category</label>
                         <select id="main_category" name="main_category" onchange="updateSubcategories()">
                             <option value="">All Main Categories</option>
                             <?php foreach ($mainCategories as $mainCat): ?>
@@ -823,7 +966,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                     </div>
                     
                     <div class="form-group">
-                        <label for="subcategory">📁 Subcategory</label>
+                        <label for="subcategory">Subcategory</label>
                         <select id="subcategory" name="subcategory">
                             <option value="">All Subcategories</option>
                             <?php 
@@ -838,7 +981,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                     </div>
                     
                     <div class="form-group">
-                        <label for="stock_status">📊 Stock Status</label>
+                        <label for="stock_status">Stock Status</label>
                         <select id="stock_status" name="stock_status">
                             <option value="">All Status</option>
                             <option value="in_stock" <?php echo $stockStatusFilter === 'in_stock' ? 'selected' : ''; ?>>In Stock</option>
@@ -848,7 +991,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                     </div>
                     
                     <div class="form-group">
-                        <button type="submit" class="btn btn-primary">🔍 Filter Results</button>
+                        <button type="submit" class="btn btn-primary">Filter Results</button>
                     </div>
                 </form>
             </div>
@@ -875,26 +1018,26 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             <div class="stats">
                 <div class="stat-card stat-total">
                     <div class="stat-number"><?php echo $totalProducts; ?></div>
-                    <div class="stat-label">📦 Total Products</div>
+                    <div class="stat-label">Total Products</div>
                 </div>
                 <div class="stat-card stat-in-stock">
                     <div class="stat-number"><?php echo $inStock; ?></div>
-                    <div class="stat-label">✅ In Stock</div>
+                    <div class="stat-label">In Stock</div>
                 </div>
                 <div class="stat-card stat-low-stock">
                     <div class="stat-number"><?php echo $lowStock; ?></div>
-                    <div class="stat-label">⚠️ Low Stock</div>
+                    <div class="stat-label">Low Stock</div>
                 </div>
                 <div class="stat-card stat-out-of-stock">
                     <div class="stat-number"><?php echo $outOfStock; ?></div>
-                    <div class="stat-label">❌ Out of Stock</div>
+                    <div class="stat-label">Out of Stock</div>
                 </div>
             </div>
 
             <!-- Inventory Table -->
             <div class="inventory-table">
                 <div class="table-header">
-                    <h2>📋 Stock Management Dashboard</h2>
+                    <h2>Stock Management Dashboard</h2>
                 </div>
                 
                 <table>
@@ -948,10 +1091,10 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                                 <td><span class="stock-status <?php echo $statusClass; ?>"><?php echo $statusText; ?></span></td>
                                 <td class="actions">
                                     <button class="btn btn-success btn-sm" onclick="openUpdateModal(<?php echo $product['id']; ?>, '<?php echo htmlspecialchars($product['name']); ?>', '<?php echo htmlspecialchars($product['sizes_stock'] ?? ''); ?>')">
-                                        📝 Update Stock
+                                        Update Stock
                                     </button>
                                     <button class="btn btn-info btn-sm" onclick="viewHistory(<?php echo $product['id']; ?>, '<?php echo htmlspecialchars($product['name']); ?>')">
-                                        📊 View History
+                                        View History
                                     </button>
                                 </td>
                             </tr>
@@ -960,7 +1103,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                         <?php if (empty($products)): ?>
                             <tr>
                                 <td colspan="7" style="text-align: center; padding: 40px; color: #666; font-size: 24px;">
-                                    🔍 No products found matching your criteria
+                                    No products found matching your criteria
                                 </td>
                             </tr>
                         <?php endif; ?>
@@ -974,7 +1117,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
     <div id="updateModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>📝 Update Stock</h3>
+                <h3>Update Stock</h3>
                 <span class="close" onclick="closeModal('updateModal')">&times;</span>
             </div>
             <div class="modal-body">
@@ -989,18 +1132,45 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
     <div id="historyModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>📊 Inventory History</h3>
+                <h3>Inventory History</h3>
                 <span class="close" onclick="closeModal('historyModal')">&times;</span>
             </div>
             <div class="modal-body">
                 <div id="historyModalContent">
-                    <div class="loading">📊 Loading history...</div>
+                    <div class="loading">Loading history...</div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        // Profile dropdown functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const profileDropdown = document.getElementById('profileDropdown');
+            const profileMenu = document.getElementById('profileMenu');
+            
+            profileDropdown.addEventListener('click', function(e) {
+                e.stopPropagation();
+                profileMenu.classList.toggle('show');
+            });
+            
+            // Close dropdown when clicking elsewhere
+            document.addEventListener('click', function() {
+                profileMenu.classList.remove('show');
+            });
+            
+            // Prevent dropdown from closing when clicking inside it
+            profileMenu.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+            
+            // Update current date and time
+            updateDateTime();
+            
+            // Update time every second
+            setInterval(updateDateTime, 1000);
+        });
+
         // Update current date and time
         function updateDateTime() {
             const now = new Date();
@@ -1014,12 +1184,8 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                 second: '2-digit',
                 timeZoneName: 'short'
             };
-            document.getElementById('currentDateTime').textContent = now.toLocaleDateString('en-US', options);
+            // Removed the element reference as it's not in the header anymore
         }
-
-        // Update time every second
-        setInterval(updateDateTime, 1000);
-        updateDateTime(); // Initial call
 
         // Update subcategories based on main category selection
         function updateSubcategories() {
@@ -1046,9 +1212,9 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             const modal = document.getElementById('updateModal');
             const content = document.getElementById('updateModalContent');
             
-            let html = `<h4>📦 ${productName}</h4>`;
-            html += `<input type="text" class="admin-input" id="adminName" placeholder="👤 Enter Admin Name" required>`;
-            html += `<input type="text" class="reason-input" id="updateReason" placeholder="📝 Reason for stock change" required>`;
+            let html = `<h4>${productName}</h4>`;
+            html += `<input type="text" class="admin-input" id="adminName" placeholder="Enter Admin Name" required>`;
+            html += `<input type="text" class="reason-input" id="updateReason" placeholder="Reason for stock change" required>`;
             html += `<div class="size-update-grid">`;
             
             if (sizesStock) {
@@ -1062,17 +1228,17 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                         
                         html += `
                             <div class="size-update-item">
-                                <div class="size-label">📏 Size ${size}</div>
-                                <div class="current-stock">📦 Current: ${stock} units</div>
+                                <div class="size-label">Size ${size}</div>
+                                <div class="current-stock">Current: ${stock} units</div>
                                 <input type="number" class="quantity-input" placeholder="±0" data-size-id="${sizeId}" data-product-id="${productId}" min="0">
-                                <button class="btn btn-success btn-sm" onclick="updateStock(${sizeId}, ${productId}, this)">➕ Add</button>
-                                <button class="btn btn-danger btn-sm" onclick="updateStock(${sizeId}, ${productId}, this, true)">➖ Deduct</button>
+                                <button class="btn btn-success btn-sm" onclick="updateStock(${sizeId}, ${productId}, this)">Add</button>
+                                <button class="btn btn-danger btn-sm" onclick="updateStock(${sizeId}, ${productId}, this, true)">Deduct</button>
                             </div>
                         `;
                     }
                 });
             } else {
-                html += '<p style="text-align: center; font-size: 22px; color: #666;">📭 No size variants found for this product.</p>';
+                html += '<p style="text-align: center; font-size: 22px; color: #666;">No size variants found for this product.</p>';
             }
             
             html += `</div>`;
@@ -1086,18 +1252,18 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             const reason = document.getElementById('updateReason').value.trim();
             
             if (!adminName) {
-                showAlert('❌ Please enter admin name', 'error');
+                showAlert('Please enter admin name', 'error');
                 return;
             }
             
             if (!reason) {
-                showAlert('❌ Please enter reason for stock change', 'error');
+                showAlert('Please enter reason for stock change', 'error');
                 return;
             }
             
             let quantity = parseInt(input.value) || 0;
             if (quantity <= 0) {
-                showAlert('❌ Please enter a valid quantity', 'error');
+                showAlert('Please enter a valid quantity', 'error');
                 return;
             }
             
@@ -1114,7 +1280,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             formData.append('admin_name', adminName);
             
             button.disabled = true;
-            button.textContent = isDeduction ? '⏳ Deducting...' : '⏳ Adding...';
+            button.textContent = isDeduction ? 'Deducting...' : 'Adding...';
             
             fetch('', {
                 method: 'POST',
@@ -1123,10 +1289,10 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showAlert('✅ Stock updated successfully!', 'success');
+                    showAlert('Stock updated successfully!', 'success');
                     // Update the current stock display
                     const currentStockEl = button.parentElement.querySelector('.current-stock');
-                    currentStockEl.textContent = `📦 Current: ${data.new_stock} units`;
+                    currentStockEl.textContent = `Current: ${data.new_stock} units`;
                     input.value = '';
                     
                     // Refresh page after 2 seconds to show updated data
@@ -1134,15 +1300,15 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                         location.reload();
                     }, 2000);
                 } else {
-                    showAlert('❌ Error: ' + data.error, 'error');
+                    showAlert('Error: ' + data.error, 'error');
                 }
             })
             .catch(error => {
-                showAlert('❌ Network error occurred', 'error');
+                showAlert('Network error occurred', 'error');
             })
             .finally(() => {
                 button.disabled = false;
-                button.textContent = isDeduction ? '➖ Deduct' : '➕ Add';
+                button.textContent = isDeduction ? 'Deduct' : 'Add';
             });
         }
 
@@ -1150,7 +1316,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             const modal = document.getElementById('historyModal');
             const content = document.getElementById('historyModalContent');
             
-            content.innerHTML = `<h4>📊 ${productName}</h4><div class="loading">📊 Loading history...</div>`;
+            content.innerHTML = `<h4>${productName}</h4><div class="loading">Loading history...</div>`;
             modal.style.display = 'block';
             
             const formData = new FormData();
@@ -1164,7 +1330,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    let html = `<h4>📊 ${productName}</h4>`;
+                    let html = `<h4>${productName}</h4>`;
                     
                     if (data.history.length > 0) {
                         html += `
@@ -1172,11 +1338,11 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                                 <table>
                                     <thead>
                                         <tr>
-                                            <th>📅 Date & Time</th>
-                                            <th>📏 Size</th>
-                                            <th>📊 Change</th>
-                                            <th>📝 Reason</th>
-                                            <th>👤 Admin</th>
+                                            <th>Date & Time</th>
+                                            <th>Size</th>
+                                            <th>Change</th>
+                                            <th>Reason</th>
+                                            <th>Admin</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1185,16 +1351,15 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                         data.history.forEach(record => {
                             const changeClass = record.quantity_change > 0 ? 'quantity-positive' : 'quantity-negative';
                             const changeSymbol = record.quantity_change > 0 ? '+' : '';
-                            const changeIcon = record.quantity_change > 0 ? '📈' : '📉';
                             const date = new Date(record.created_at).toLocaleDateString() + ' ' + new Date(record.created_at).toLocaleTimeString();
                             
                             html += `
                                 <tr>
                                     <td>${date}</td>
-                                    <td>📏 ${record.size || 'N/A'}</td>
-                                    <td class="${changeClass}">${changeIcon} ${changeSymbol}${record.quantity_change}</td>
+                                    <td>${record.size || 'N/A'}</td>
+                                    <td class="${changeClass}">${changeSymbol}${record.quantity_change}</td>
                                     <td>${record.reason}</td>
-                                    <td>👤 ${record.admin_name}</td>
+                                    <td>${record.admin_name}</td>
                                 </tr>
                             `;
                         });
@@ -1205,16 +1370,16 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                             </div>
                         `;
                     } else {
-                        html += '<p style="text-align: center; font-size: 22px; color: #666;">📭 No history records found for this product.</p>';
+                        html += '<p style="text-align: center; font-size: 22px; color: #666;">No history records found for this product.</p>';
                     }
                     
                     content.innerHTML = html;
                 } else {
-                    content.innerHTML = '<p style="text-align: center; font-size: 22px; color: #e74c3c;">❌ Error loading history.</p>';
+                    content.innerHTML = '<p style="text-align: center; font-size: 22px; color: #e74c3c;">Error loading history.</p>';
                 }
             })
             .catch(error => {
-                content.innerHTML = '<p style="text-align: center; font-size: 22px; color: #e74c3c;">❌ Network error occurred while loading history.</p>';
+                content.innerHTML = '<p style="text-align: center; font-size: 22px; color: #e74c3c;">Network error occurred while loading history.</p>';
             });
         }
 
@@ -1277,10 +1442,10 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             if (lowStockCount > 0 || outOfStockCount > 0) {
                 let message = '';
                 if (outOfStockCount > 0) {
-                    message += `🚨 ${outOfStockCount} product(s) are completely out of stock! `;
+                    message += `${outOfStockCount} product(s) are completely out of stock! `;
                 }
                 if (lowStockCount > 0) {
-                    message += `⚠️ ${lowStockCount} product(s) have low stock levels.`;
+                    message += `${lowStockCount} product(s) have low stock levels.`;
                 }
                 
                 if (message) {
@@ -1344,7 +1509,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Inventory Report - Elegance Fashion</title>
+                    <title>Inventory Report - Allura Estrella</title>
                     <style>
                         body { font-family: Arial, sans-serif; font-size: 12px; }
                         table { width: 100%; border-collapse: collapse; margin: 20px 0; }
@@ -1358,7 +1523,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                 </head>
                 <body>
                     <div class="header">
-                        <h1>ELEGANCE FASHION</h1>
+                        <h1>ALLURA ESTRELLA</h1>
                         <h2>Inventory Report</h2>
                         <p>Generated on: ${new Date().toLocaleString()}</p>
                     </div>
@@ -1396,9 +1561,6 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             printWindow.document.close();
             printWindow.print();
         }
-
-        // Add print button (you can add this to your UI if needed)
-        // document.querySelector('.table-header').innerHTML += '<button onclick="printInventoryReport()" class="btn btn-info" style="float: right;">🖨️ Print Report</button>';
     </script>
 </body>
 </html>
