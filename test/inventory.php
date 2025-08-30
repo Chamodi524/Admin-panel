@@ -12,8 +12,6 @@ try {
     die("Connection failed: " . $e->getMessage());
 }
 
-
-
 // Create inventory_log table if it doesn't exist
 $createLogTable = "
 CREATE TABLE IF NOT EXISTS `inventory_log` (
@@ -218,7 +216,6 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fashion Inventory Management System</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -241,167 +238,83 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             padding: 30px;
         }
 
-        /* Admin Header - Modern Design */
-        .admin-header {
-            background: white;
-            padding: 15px 30px;
-            margin: -30px -30px 30px -30px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
+        /* Formal Header - Reduced Height */
+        .formal-header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            padding: 20px 0;
+            margin: -30px -30px 40px -30px;
+            position: relative;
+            overflow: hidden;
         }
 
-        .header-left {
+        .formal-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20"><defs><linearGradient id="a" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="%23ffffff" stop-opacity="0.1"/><stop offset="1" stop-color="%23ffffff" stop-opacity="0"/></linearGradient></defs><rect width="11" height="20" fill="url(%23a)" rx="5"/><rect x="22" width="11" height="20" fill="url(%23a)" rx="5"/><rect x="44" width="11" height="20" fill="url(%23a)" rx="5"/><rect x="66" width="11" height="20" fill="url(%23a)" rx="5"/><rect x="88" width="11" height="20" fill="url(%23a)" rx="5"/></svg>') repeat;
+            opacity: 0.1;
+        }
+
+        .formal-header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 30px;
+            position: relative;
+            z-index: 1;
+            text-align: center;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 20px;
         }
 
-        .logo {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1e3a8a;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .logo img {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
+        .company-logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
             object-fit: cover;
+            border: 3px solid rgba(255,255,255,0.3);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            flex-shrink: 0;
         }
 
-        .page-title {
-            font-size: 20px;
-            color: #555;
-            font-weight: 500;
+        .header-text {
+            text-align: left;
         }
 
-        .header-center {
-            flex-grow: 1;
-            text-align: center;
+        .company-name {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .company-subtitle {
+            font-size: 16px;
+            font-weight: 300;
+            opacity: 0.9;
+            margin-bottom: 8px;
         }
 
         .system-title {
             font-size: 22px;
             font-weight: 600;
-            color: #1e3a8a;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            color: #45b7d1;
+            margin-bottom: 5px;
         }
 
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .header-icon {
-            position: relative;
-            font-size: 20px;
-            color: #555;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 50%;
-            transition: all 0.3s ease;
-        }
-
-        .header-icon:hover {
-            background: #f0f5ff;
-            color: #1e3a8a;
-        }
-
-        .notification-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background: #e74c3c;
-            color: white;
-            font-size: 12px;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-        }
-
-        .admin-profile {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-            padding: 8px 12px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .admin-profile:hover {
-            background: #f0f5ff;
-        }
-
-        .admin-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-            font-size: 18px;
-        }
-
-        .admin-name {
-            font-weight: 500;
-            color: #333;
-        }
-
-        .dropdown-menu {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-            width: 200px;
-            z-index: 1000;
-            display: none;
-            overflow: hidden;
-        }
-
-        .dropdown-menu.show {
-            display: block;
-        }
-
-        .dropdown-item {
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #555;
-            text-decoration: none;
-            transition: all 0.3s ease;
-        }
-
-        .dropdown-item:hover {
-            background: #f0f5ff;
-            color: #1e3a8a;
-        }
-
-        .dropdown-divider {
-            height: 1px;
-            background: #eee;
-            margin: 5px 0;
+        .current-date-time {
+            font-size: 14px;
+            opacity: 0.8;
+            font-weight: 300;
         }
 
         /* Main Content Styling */
@@ -802,9 +715,27 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                 padding: 20px;
             }
             
-            .admin-header {
+            .formal-header {
                 margin: -20px -20px 30px -20px;
-                padding: 15px 20px;
+                padding: 15px 0;
+            }
+
+            .formal-header-content {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .header-text {
+                text-align: center;
+            }
+            
+            .company-name {
+                font-size: 28px;
+            }
+            
+            .system-title {
+                font-size: 20px;
             }
             
             .content-wrapper {
@@ -818,10 +749,6 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             .stats {
                 grid-template-columns: repeat(2, 1fr);
             }
-            
-            .admin-name {
-                display: none;
-            }
         }
 
         @media (max-width: 768px) {
@@ -829,19 +756,29 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                 font-size: 18px;
             }
             
-            .admin-header {
-                padding: 10px 15px;
-                flex-wrap: wrap;
+            .formal-header {
+                padding: 10px 0;
+            }
+
+            .company-logo {
+                width: 80px;
+                height: 80px;
             }
             
-            .header-center {
-                order: 3;
-                width: 100%;
-                margin-top: 10px;
+            .company-name {
+                font-size: 24px;
+            }
+            
+            .company-subtitle {
+                font-size: 14px;
             }
             
             .system-title {
                 font-size: 18px;
+            }
+
+            .current-date-time {
+                font-size: 12px;
             }
             
             .stats {
@@ -869,75 +806,19 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                 grid-template-columns: 1fr;
                 text-align: center;
             }
-            
-            .page-title {
-                display: none;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .header-right {
-                gap: 10px;
-            }
-            
-            .header-icon {
-                font-size: 18px;
-                padding: 6px;
-            }
-            
-            .admin-avatar {
-                width: 35px;
-                height: 35px;
-                font-size: 16px;
-            }
         }
     </style>
 </head>
 <body>
-    <!-- Admin Header -->
-    <div class="admin-header">
-        <div class="header-left">
-            <a href="#" class="logo">
-                <i class="fas fa-tshirt"></i>
-                <span>ALLURA ESTRELLA</span>
-            </a>
-            
-        </div>
-        
-        <div class="header-center">
-            <div class="system-title">Inventory Management System</div>
-        </div>
-        
-        <div class="header-right">
-            <div class="header-icon" title="Notifications">
-                <i class="fas fa-bell"></i>
-                <span class="notification-badge">3</span>
-            </div>
-            
-            <div class="header-icon" title="Settings">
-                <i class="fas fa-cog"></i>
-            </div>
-            
-            <div class="admin-profile" id="profileDropdown">
-                <div class="admin-avatar">A</div>
-                <div class="admin-name">Admin</div>
-                <i class="fas fa-chevron-down"></i>
-                
-                <div class="dropdown-menu" id="profileMenu">
-                    <a href="#" class="dropdown-item">
-                        <i class="fas fa-user"></i>
-                        <span>Profile</span>
-                    </a>
-                    <a href="#" class="dropdown-item">
-                        <i class="fas fa-cog"></i>
-                        <span>Settings</span>
-                    </a>
-                    <div class="dropdown-divider"></div>
-                    <a href="#" class="dropdown-item">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>Logout</span>
-                    </a>
-                </div>
+    <!-- Formal Header -->
+    <div class="formal-header">
+        <div class="formal-header-content">
+            <img src="allura_estrella.png" alt="Allura Estrella Logo" class="company-logo">
+            <div class="header-text">
+                <h1 class="company-name">ALLURA ESTELLA</h1>
+                <p class="company-subtitle">Premium Women's Clothing & Accessories</p>
+                <h2 class="system-title">INVENTORY MANAGEMENT SYSTEM</h2>
+                <p class="current-date-time" id="currentDateTime"></p>
             </div>
         </div>
     </div>
@@ -1144,33 +1025,6 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
     </div>
 
     <script>
-        // Profile dropdown functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const profileDropdown = document.getElementById('profileDropdown');
-            const profileMenu = document.getElementById('profileMenu');
-            
-            profileDropdown.addEventListener('click', function(e) {
-                e.stopPropagation();
-                profileMenu.classList.toggle('show');
-            });
-            
-            // Close dropdown when clicking elsewhere
-            document.addEventListener('click', function() {
-                profileMenu.classList.remove('show');
-            });
-            
-            // Prevent dropdown from closing when clicking inside it
-            profileMenu.addEventListener('click', function(e) {
-                e.stopPropagation();
-            });
-            
-            // Update current date and time
-            updateDateTime();
-            
-            // Update time every second
-            setInterval(updateDateTime, 1000);
-        });
-
         // Update current date and time
         function updateDateTime() {
             const now = new Date();
@@ -1184,8 +1038,12 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                 second: '2-digit',
                 timeZoneName: 'short'
             };
-            // Removed the element reference as it's not in the header anymore
+            document.getElementById('currentDateTime').textContent = now.toLocaleDateString('en-US', options);
         }
+
+        // Update time every second
+        setInterval(updateDateTime, 1000);
+        updateDateTime(); // Initial call
 
         // Update subcategories based on main category selection
         function updateSubcategories() {
@@ -1509,7 +1367,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Inventory Report - Allura Estrella</title>
+                    <title>Inventory Report - Elegance Fashion</title>
                     <style>
                         body { font-family: Arial, sans-serif; font-size: 12px; }
                         table { width: 100%; border-collapse: collapse; margin: 20px 0; }
@@ -1523,7 +1381,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                 </head>
                 <body>
                     <div class="header">
-                        <h1>ALLURA ESTRELLA</h1>
+                        <h1>ELEGANCE FASHION</h1>
                         <h2>Inventory Report</h2>
                         <p>Generated on: ${new Date().toLocaleString()}</p>
                     </div>
@@ -1561,6 +1419,9 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             printWindow.document.close();
             printWindow.print();
         }
+
+        // Add print button (you can add this to your UI if needed)
+        // document.querySelector('.table-header').innerHTML += '<button onclick="printInventoryReport()" class="btn btn-info" style="float: right;">Print Report</button>';
     </script>
 </body>
 </html>
