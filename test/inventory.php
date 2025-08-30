@@ -1,158 +1,213 @@
 <?php
 // Database connection
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "testbase";
+$host = 'localhost';
+$dbname = 'testbase';
+$username = 'root'; // Change as needed
+$password = ''; // Change as needed
 
 try {
-    $pdo = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password);
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch(PDOException $e) {
     die("Connection failed: " . $e->getMessage());
 }
 
+// Create inventory_log table if it doesn't exist
+$createLogTable = "
+CREATE TABLE IF NOT EXISTS `inventory_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `product_id` int(11) NOT NULL,
+  `size_id` int(11) DEFAULT NULL,
+  `quantity_change` int(11) NOT NULL,
+  `reason` varchar(255) NOT NULL,
+  `admin_name` varchar(100) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`size_id`) REFERENCES `product_sizes`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+";
+
+try {
+    $pdo->exec($createLogTable);
+} catch(PDOException $e) {
+    // Table might already exist, continue
+}
+
 // Handle AJAX requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    header('Content-Type: application/json');
     
-    switch ($action) {
-        case 'get_inventory':
-            $search = $_POST['search'] ?? '';
-            $category = $_POST['category'] ?? '';
-            $availability = $_POST['availability'] ?? '';
-            
-            $sql = "SELECT p.*, 
-                           COALESCE(SUM(ps.stock_quantity), 0) as total_stock,
-                           COUNT(ps.id) as size_variants
-                    FROM products p 
-                    LEFT JOIN product_sizes ps ON p.id = ps.product_id 
-                    WHERE 1=1";
-            $params = [];
-            
-            if ($search) {
-                $sql .= " AND p.name LIKE ?";
-                $params[] = "%$search%";
-            }
-            
-            if ($category) {
-                $sql .= " AND p.category = ?";
-                $params[] = $category;
-            }
-            
-            if ($availability) {
-                $sql .= " AND p.availability = ?";
-                $params[] = $availability;
-            }
-            
-            $sql .= " GROUP BY p.id ORDER BY p.name";
-            
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute($params);
-            $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            echo json_encode($products);
-            exit;
-            
-        case 'get_low_stock':
-            $threshold = $_POST['threshold'] ?? 10;
-            
-            $sql = "SELECT p.name, p.category, ps.size, ps.stock_quantity
-                    FROM products p
-                    JOIN product_sizes ps ON p.id = ps.product_id
-                    WHERE ps.stock_quantity <= ?
-                    ORDER BY ps.stock_quantity ASC";
-            
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$threshold]);
-            $lowStock = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            echo json_encode($lowStock);
-            exit;
-            
+    switch ($_POST['action']) {
         case 'update_stock':
-            $productId = $_POST['product_id'];
             $sizeId = $_POST['size_id'];
-            $newStock = $_POST['new_stock'];
+            $quantityChange = (int)$_POST['quantity_change'];
+            $reason = $_POST['reason'];
+            $adminName = $_POST['admin_name'];
+            $productId = $_POST['product_id'];
             
-            $stmt = $pdo->prepare("UPDATE product_sizes SET stock_quantity = ? WHERE id = ? AND product_id = ?");
-            $stmt->execute([$newStock, $sizeId, $productId]);
-            
-            echo json_encode(['success' => true]);
-            exit;
-            
-        case 'export_csv':
-            $sql = "SELECT p.name, p.category, p.subcategory, p.price, p.availability,
-                           ps.size, ps.stock_quantity
-                    FROM products p
-                    LEFT JOIN product_sizes ps ON p.id = ps.product_id
-                    ORDER BY p.name, ps.size";
-            
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute();
-            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            header('Content-Type: text/csv');
-            header('Content-Disposition: attachment; filename="inventory_export.csv"');
-            
-            $output = fopen('php://output', 'w');
-            fputcsv($output, ['Product Name', 'Category', 'Subcategory', 'Price', 'Availability', 'Size', 'Stock Quantity']);
-            
-            foreach ($data as $row) {
-                fputcsv($output, $row);
-            }
-            
-            fclose($output);
-            exit;
-            
-        case 'import_csv':
-            if (isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_OK) {
-                $file = fopen($_FILES['csv_file']['tmp_name'], 'r');
-                $header = fgetcsv($file); // Skip header
-                $imported = 0;
-                $errors = [];
+            try {
+                $pdo->beginTransaction();
                 
-                while (($row = fgetcsv($file)) !== FALSE) {
-                    try {
-                        // Check if product exists
-                        $stmt = $pdo->prepare("SELECT id FROM products WHERE name = ?");
-                        $stmt->execute([$row[0]]);
-                        $product = $stmt->fetch();
-                        
-                        if (!$product) {
-                            // Create new product
-                            $stmt = $pdo->prepare("INSERT INTO products (name, category, subcategory, price, availability) VALUES (?, ?, ?, ?, ?)");
-                            $stmt->execute([$row[0], $row[1], $row[2], $row[3], $row[4]]);
-                            $productId = $pdo->lastInsertId();
-                        } else {
-                            $productId = $product['id'];
-                        }
-                        
-                        // Update or insert size stock
-                        $stmt = $pdo->prepare("INSERT INTO product_sizes (product_id, size, stock_quantity) 
-                                               VALUES (?, ?, ?) 
-                                               ON DUPLICATE KEY UPDATE stock_quantity = VALUES(stock_quantity)");
-                        $stmt->execute([$productId, $row[5], $row[6]]);
-                        $imported++;
-                        
-                    } catch (Exception $e) {
-                        $errors[] = "Row " . ($imported + 1) . ": " . $e->getMessage();
-                    }
+                // Get current stock
+                $stmt = $pdo->prepare("SELECT stock_quantity FROM product_sizes WHERE id = ?");
+                $stmt->execute([$sizeId]);
+                $currentStock = $stmt->fetchColumn();
+                
+                $newStock = $currentStock + $quantityChange;
+                if ($newStock < 0) {
+                    throw new Exception("Stock cannot be negative");
                 }
                 
-                fclose($file);
-                echo json_encode(['success' => true, 'imported' => $imported, 'errors' => $errors]);
-            } else {
-                echo json_encode(['success' => false, 'message' => 'File upload failed']);
+                // Update stock
+                $stmt = $pdo->prepare("UPDATE product_sizes SET stock_quantity = ?, updated_at = NOW() WHERE id = ?");
+                $stmt->execute([$newStock, $sizeId]);
+                
+                // Log the change
+                $stmt = $pdo->prepare("INSERT INTO inventory_log (product_id, size_id, quantity_change, reason, admin_name) VALUES (?, ?, ?, ?, ?)");
+                $stmt->execute([$productId, $sizeId, $quantityChange, $reason, $adminName]);
+                
+                $pdo->commit();
+                echo json_encode(['success' => true, 'new_stock' => $newStock]);
+            } catch (Exception $e) {
+                $pdo->rollback();
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }
+            exit;
+            
+        case 'get_history':
+            $productId = $_POST['product_id'] ?? null;
+            $query = "
+                SELECT il.*, p.name as product_name, ps.size 
+                FROM inventory_log il
+                JOIN products p ON il.product_id = p.id
+                LEFT JOIN product_sizes ps ON il.size_id = ps.id
+            ";
+            $params = [];
+            
+            if ($productId) {
+                $query .= " WHERE il.product_id = ?";
+                $params[] = $productId;
+            }
+            
+            $query .= " ORDER BY il.created_at DESC LIMIT 50";
+            
+            $stmt = $pdo->prepare($query);
+            $stmt->execute($params);
+            $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            echo json_encode(['success' => true, 'history' => $history]);
             exit;
     }
 }
 
-// Get categories for filter
-$stmt = $pdo->prepare("SELECT DISTINCT category FROM products ORDER BY category");
-$stmt->execute();
-$categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
+// Get products with stock information
+function getProductsWithStock($pdo, $search = '', $mainCategory = '', $subCategory = '', $stockStatus = '') {
+    $query = "
+        SELECT p.*, 
+               GROUP_CONCAT(
+                   CONCAT(ps.size, ':', ps.stock_quantity, ':', ps.id) 
+                   ORDER BY ps.size SEPARATOR '|'
+               ) as sizes_stock,
+               SUM(ps.stock_quantity) as total_stock
+        FROM products p
+        LEFT JOIN product_sizes ps ON p.id = ps.product_id
+        WHERE 1=1
+    ";
+    
+    $params = [];
+    
+    if ($search) {
+        $query .= " AND (p.name LIKE ? OR p.id LIKE ?)";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+    }
+    
+    if ($mainCategory) {
+        $query .= " AND p.category = ?";
+        $params[] = $mainCategory;
+    }
+    
+    if ($subCategory) {
+        $query .= " AND p.subcategory = ?";
+        $params[] = $subCategory;
+    }
+    
+    $query .= " GROUP BY p.id";
+    
+    if ($stockStatus) {
+        $having = [];
+        switch ($stockStatus) {
+            case 'in_stock':
+                $having[] = "total_stock > 10";
+                break;
+            case 'low_stock':
+                $having[] = "total_stock BETWEEN 1 AND 10";
+                break;
+            case 'out_of_stock':
+                $having[] = "total_stock = 0 OR total_stock IS NULL";
+                break;
+        }
+        if (!empty($having)) {
+            $query .= " HAVING " . implode(' AND ', $having);
+        }
+    }
+    
+    $query .= " ORDER BY p.name";
+    
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Hardcoded categories
+$categoriesData = [
+    'dresses' => [
+        'mini-dresses' => 'Mini Dresses',
+        'midi-dresses' => 'Midi Dresses',
+        'maxi-dresses' => 'Maxi Dresses',
+        'casual-dresses' => 'Casual Dresses',
+        'party-dresses' => 'Party Dresses',
+        'formal-dresses' => 'Formal Dresses',
+        'summer-dresses' => 'Summer Dresses'
+    ],
+    'tops' => [
+        'blouses' => 'Blouses',
+        'shirts' => 'Shirts',
+        'crop-tops' => 'Crop Tops',
+        'tank-tops' => 'Tank Tops',
+        'sweaters' => 'Sweaters',
+        'cardigans' => 'Cardigans'
+    ],
+    'bottoms' => [
+        'jeans' => 'Jeans',
+        'pants' => 'Pants',
+        'skirts' => 'Skirts',
+        'shorts' => 'Shorts',
+        'leggings' => 'Leggings'
+    ],
+    'rompers-jumpsuits' => [
+        'rompers' => 'Rompers',
+        'jumpsuits' => 'Jumpsuits',
+        'playsuits' => 'Playsuits'
+    ],
+    'office-work' => [
+        'blazers' => 'Blazers',
+        'office-dresses' => 'Office Dresses',
+        'work-pants' => 'Work Pants',
+        'office-blouses' => 'Office Blouses'
+    ]
+];
+
+// Get main categories only
+$mainCategories = array_keys($categoriesData);
+
+// Get filtered products
+$search = $_GET['search'] ?? '';
+$mainCategoryFilter = $_GET['main_category'] ?? '';
+$subCategoryFilter = $_GET['subcategory'] ?? '';
+$stockStatusFilter = $_GET['stock_status'] ?? '';
+$products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategoryFilter, $stockStatusFilter);
 ?>
 
 <!DOCTYPE html>
@@ -169,155 +224,172 @@ $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
         }
 
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
+            padding: 20px;
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
         }
 
         .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
-        .main-content {
-            padding: 30px;
-        }
-
-        .tabs {
-            display: flex;
-            border-bottom: 2px solid #e0e0e0;
-            margin-bottom: 30px;
-        }
-
-        .tab {
-            padding: 15px 25px;
-            cursor: pointer;
-            background: none;
-            border: none;
-            font-size: 1rem;
+            color: #2c3e50;
+            font-size: 28px;
             font-weight: 600;
-            color: #666;
-            transition: all 0.3s ease;
-            border-radius: 10px 10px 0 0;
-        }
-
-        .tab.active {
-            color: #667eea;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
         }
 
         .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .filters-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 15px;
+            align-items: end;
         }
 
-        .filter-group {
+        .form-group {
             display: flex;
             flex-direction: column;
         }
 
-        .filter-group label {
-            font-weight: 600;
+        .form-group label {
+            font-weight: 500;
             margin-bottom: 5px;
-            color: #333;
+            color: #555;
         }
 
-        .filter-group input,
-        .filter-group select {
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
+        .form-group input, .form-group select {
+            padding: 10px 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
         }
 
-        .filter-group input:focus,
-        .filter-group select:focus {
+        .form-group input:focus, .form-group select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #3498db;
         }
 
         .btn {
-            padding: 12px 25px;
+            padding: 10px 20px;
             border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: 600;
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
             text-decoration: none;
             display: inline-block;
             text-align: center;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #3498db;
             color: white;
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            background: #2980b9;
         }
 
         .btn-success {
-            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+            background: #27ae60;
             color: white;
         }
 
-        .btn-warning {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        .btn-success:hover {
+            background: #229954;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
             color: white;
         }
 
-        .btn-secondary {
-            background: #6c757d;
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn-info {
+            background: #17a2b8;
             color: white;
         }
+
+        .btn-info:hover {
+            background: #138496;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .stat-in-stock .stat-number { color: #27ae60; }
+        .stat-low-stock .stat-number { color: #f39c12; }
+        .stat-out-of-stock .stat-number { color: #e74c3c; }
+        .stat-total .stat-number { color: #3498db; }
 
         .inventory-table {
-            overflow-x: auto;
             background: white;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .table-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
         }
 
         table {
@@ -328,35 +400,28 @@ $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
         th, td {
             padding: 15px;
             text-align: left;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid #eee;
         }
 
         th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: #f8f9fa;
             font-weight: 600;
+            color: #555;
+            font-size: 13px;
             text-transform: uppercase;
-            font-size: 0.9rem;
             letter-spacing: 0.5px;
         }
 
-        tr:hover {
-            background: #f8f9fa;
-        }
-
-        .stock-input {
-            width: 80px;
-            padding: 8px;
-            border: 2px solid #e0e0e0;
-            border-radius: 5px;
-            text-align: center;
-        }
-
-        .status-badge {
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
+        .product-name {
             font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .stock-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
             text-transform: uppercase;
         }
 
@@ -365,37 +430,167 @@ $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
             color: #155724;
         }
 
+        .status-low-stock {
+            background: #fff3cd;
+            color: #856404;
+        }
+
         .status-out-of-stock {
             background: #f8d7da;
             color: #721c24;
         }
 
-        .low-stock-item {
-            background: #fff3cd;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 10px;
-            border-left: 4px solid #ffc107;
+        .size-stock {
+            display: inline-block;
+            margin: 2px 4px;
+            padding: 2px 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 12px;
+            border: 1px solid #dee2e6;
         }
 
-        .file-upload {
+        .actions {
+            white-space: nowrap;
+        }
+
+        .actions button {
+            margin: 0 2px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
             padding: 20px;
-            border: 2px dashed #667eea;
-            border-radius: 15px;
-            text-align: center;
-            background: #f8f9ff;
-            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .file-upload input[type="file"] {
+        .modal-header h3 {
+            margin: 0;
+            color: #2c3e50;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .size-update-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .size-update-item {
+            display: grid;
+            grid-template-columns: auto 1fr auto auto auto;
+            gap: 10px;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .size-label {
+            font-weight: 600;
+            min-width: 40px;
+        }
+
+        .current-stock {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .quantity-input {
+            width: 80px;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .reason-input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
             margin: 10px 0;
+            width: 100%;
+        }
+
+        .admin-input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            width: 100%;
+        }
+
+        .history-table {
+            margin-top: 20px;
+        }
+
+        .history-table table {
+            font-size: 14px;
+        }
+
+        .history-table th, .history-table td {
+            padding: 10px;
+        }
+
+        .quantity-positive {
+            color: #27ae60;
+            font-weight: 600;
+        }
+
+        .quantity-negative {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
         }
 
         .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 10px;
-            font-weight: 600;
+            padding: 12px 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-weight: 500;
         }
 
         .alert-success {
@@ -404,69 +599,36 @@ $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
             border: 1px solid #c3e6cb;
         }
 
-        .alert-danger {
+        .alert-error {
             background: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            text-align: center;
-            border-left: 4px solid #667eea;
-        }
-
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #667eea;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            font-size: 1rem;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 50px;
-            font-size: 1.2rem;
-            color: #666;
-        }
-
         @media (max-width: 768px) {
-            .filters {
+            .container {
+                padding: 10px;
+            }
+            
+            .filters-grid {
                 grid-template-columns: 1fr;
             }
             
-            .tabs {
-                flex-direction: column;
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
             }
             
-            .tab {
-                border-radius: 0;
-            }
-            
-            .main-content {
-                padding: 15px;
+            table {
+                font-size: 14px;
             }
             
             th, td {
-                padding: 10px 5px;
-                font-size: 0.9rem;
+                padding: 10px 8px;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
             }
         }
     </style>
@@ -474,344 +636,273 @@ $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
 <body>
     <div class="container">
         <div class="header">
-            <h1>📦 Inventory Management</h1>
-            <p>Track, manage, and optimize your product inventory</p>
+            <h1>📦 Inventory Management System</h1>
         </div>
 
-        <div class="main-content">
-            <div class="tabs">
-                <button class="tab active" onclick="showTab('inventory')">📋 Current Stock</button>
-                <button class="tab" onclick="showTab('alerts')">⚠️ Low Stock Alerts</button>
-                <button class="tab" onclick="showTab('reports')">📊 Reports</button>
-                <button class="tab" onclick="showTab('import-export')">📁 Import/Export</button>
+        <!-- Filters -->
+        <div class="filters">
+            <form method="GET" class="filters-grid">
+                <div class="form-group">
+                    <label for="search">🔍 Search Products</label>
+                    <input type="text" id="search" name="search" placeholder="Search by name or ID..." value="<?php echo htmlspecialchars($search); ?>">
+                </div>
+                
+                <div class="form-group">
+                    <label for="main_category">📂 Main Category</label>
+                    <select id="main_category" name="main_category" onchange="updateSubcategories()">
+                        <option value="">All Main Categories</option>
+                        <?php foreach ($mainCategories as $mainCat): ?>
+                            <option value="<?php echo htmlspecialchars($mainCat); ?>" <?php echo $mainCategoryFilter === $mainCat ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars(ucwords(str_replace('-', ' ', $mainCat))); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="subcategory">📁 Subcategory</label>
+                    <select id="subcategory" name="subcategory">
+                        <option value="">All Subcategories</option>
+                        <?php 
+                        if ($mainCategoryFilter && isset($categoriesData[$mainCategoryFilter])) {
+                            foreach ($categoriesData[$mainCategoryFilter] as $subCatKey => $subCatName) {
+                                $selected = $subCategoryFilter === $subCatKey ? 'selected' : '';
+                                echo "<option value='".htmlspecialchars($subCatKey)."' $selected>".htmlspecialchars($subCatName)."</option>";
+                            }
+                        }
+                        ?>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="stock_status">📊 Stock Status</label>
+                    <select id="stock_status" name="stock_status">
+                        <option value="">All Status</option>
+                        <option value="in_stock" <?php echo $stockStatusFilter === 'in_stock' ? 'selected' : ''; ?>>In Stock</option>
+                        <option value="low_stock" <?php echo $stockStatusFilter === 'low_stock' ? 'selected' : ''; ?>>Low Stock</option>
+                        <option value="out_of_stock" <?php echo $stockStatusFilter === 'out_of_stock' ? 'selected' : ''; ?>>Out of Stock</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Statistics -->
+        <?php
+        $totalProducts = count($products);
+        $inStock = 0;
+        $lowStock = 0;
+        $outOfStock = 0;
+
+        foreach ($products as $product) {
+            $totalStock = (int)$product['total_stock'];
+            if ($totalStock > 10) {
+                $inStock++;
+            } elseif ($totalStock > 0) {
+                $lowStock++;
+            } else {
+                $outOfStock++;
+            }
+        }
+        ?>
+
+        <div class="stats">
+            <div class="stat-card stat-total">
+                <div class="stat-number"><?php echo $totalProducts; ?></div>
+                <div class="stat-label">Total Products</div>
             </div>
+            <div class="stat-card stat-in-stock">
+                <div class="stat-number"><?php echo $inStock; ?></div>
+                <div class="stat-label">In Stock</div>
+            </div>
+            <div class="stat-card stat-low-stock">
+                <div class="stat-number"><?php echo $lowStock; ?></div>
+                <div class="stat-label">Low Stock</div>
+            </div>
+            <div class="stat-card stat-out-of-stock">
+                <div class="stat-number"><?php echo $outOfStock; ?></div>
+                <div class="stat-label">Out of Stock</div>
+            </div>
+        </div>
 
-            <!-- Current Stock Tab -->
-            <div id="inventory" class="tab-content active">
-                <div class="filters">
-                    <div class="filter-group">
-                        <label>Search Products</label>
-                        <input type="text" id="searchInput" placeholder="Enter product name...">
-                    </div>
-                    <div class="filter-group">
-                        <label>Category</label>
-                        <select id="categoryFilter">
-                            <option value="">All Categories</option>
-                            <?php foreach ($categories as $cat): ?>
-                                <option value="<?php echo htmlspecialchars($cat); ?>"><?php echo htmlspecialchars($cat); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>Availability</label>
-                        <select id="availabilityFilter">
-                            <option value="">All Status</option>
-                            <option value="in_stock">In Stock</option>
-                            <option value="out_of_stock">Out of Stock</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>&nbsp;</label>
-                        <button class="btn btn-primary" onclick="loadInventory()">🔍 Filter</button>
-                    </div>
-                </div>
+        <!-- Inventory Table -->
+        <div class="inventory-table">
+            <div class="table-header">
+                <h2>Stock Management</h2>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product ID</th>
+                        <th>Product Name</th>
+                        <th>Category</th>
+                        <th>Sizes & Stock</th>
+                        <th>Total Stock</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($products as $product): ?>
+                        <?php
+                        $totalStock = (int)$product['total_stock'];
+                        $statusClass = 'status-out-of-stock';
+                        $statusText = 'Out of Stock';
+                        
+                        if ($totalStock > 10) {
+                            $statusClass = 'status-in-stock';
+                            $statusText = 'In Stock';
+                        } elseif ($totalStock > 0) {
+                            $statusClass = 'status-low-stock';
+                            $statusText = 'Low Stock';
+                        }
+                        ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($product['id']); ?></td>
+                            <td class="product-name"><?php echo htmlspecialchars($product['name']); ?></td>
+                            <td><?php echo htmlspecialchars($product['category'] . ($product['subcategory'] ? ' > ' . $product['subcategory'] : '')); ?></td>
+                            <td>
+                                <?php if ($product['sizes_stock']): ?>
+                                    <?php foreach (explode('|', $product['sizes_stock']) as $sizeStock): ?>
+                                        <?php
+                                        $parts = explode(':', $sizeStock);
+                                        if (count($parts) >= 2) {
+                                            $size = $parts[0];
+                                            $stock = $parts[1];
+                                            echo "<span class='size-stock'>$size: $stock</span>";
+                                        }
+                                        ?>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <span class="size-stock">No sizes</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><strong><?php echo $totalStock; ?></strong></td>
+                            <td><span class="stock-status <?php echo $statusClass; ?>"><?php echo $statusText; ?></span></td>
+                            <td class="actions">
+                                <button class="btn btn-success btn-sm" onclick="openUpdateModal(<?php echo $product['id']; ?>, '<?php echo htmlspecialchars($product['name']); ?>', '<?php echo htmlspecialchars($product['sizes_stock'] ?? ''); ?>')">
+                                    Update Stock
+                                </button>
+                                <button class="btn btn-info btn-sm" onclick="viewHistory(<?php echo $product['id']; ?>, '<?php echo htmlspecialchars($product['name']); ?>')">
+                                    View History
+                                </button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-                <div class="inventory-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Product Name</th>
-                                <th>Category</th>
-                                <th>Price</th>
-                                <th>Total Stock</th>
-                                <th>Sizes</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="inventoryTableBody">
-                            <tr>
-                                <td colspan="7" class="loading">Loading inventory...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+    <!-- Update Stock Modal -->
+    <div id="updateModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Update Stock</h3>
+                <span class="close" onclick="closeModal('updateModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="updateModalContent">
+                    <!-- Content will be populated by JavaScript -->
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Low Stock Alerts Tab -->
-            <div id="alerts" class="tab-content">
-                <div class="filters">
-                    <div class="filter-group">
-                        <label>Low Stock Threshold</label>
-                        <input type="number" id="thresholdInput" value="10" min="1">
-                    </div>
-                    <div class="filter-group">
-                        <label>&nbsp;</label>
-                        <button class="btn btn-warning" onclick="loadLowStock()">⚠️ Check Alerts</button>
-                    </div>
-                </div>
-
-                <div id="lowStockContainer">
-                    <div class="loading">Click "Check Alerts" to view low stock items</div>
-                </div>
+    <!-- History Modal -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Inventory History</h3>
+                <span class="close" onclick="closeModal('historyModal')">&times;</span>
             </div>
-
-            <!-- Reports Tab -->
-            <div id="reports" class="tab-content">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-number" id="totalProducts">-</div>
-                        <div class="stat-label">Total Products</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" id="totalStock">-</div>
-                        <div class="stat-label">Total Stock Units</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" id="lowStockCount">-</div>
-                        <div class="stat-label">Low Stock Items</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" id="outOfStockCount">-</div>
-                        <div class="stat-label">Out of Stock</div>
-                    </div>
-                </div>
-
-                <div style="text-align: center; margin-top: 30px;">
-                    <button class="btn btn-primary" onclick="generateReport()">📊 Generate Report</button>
-                </div>
-            </div>
-
-            <!-- Import/Export Tab -->
-            <div id="import-export" class="tab-content">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-                    <div>
-                        <h3>📤 Export Inventory</h3>
-                        <p>Download your current inventory data as CSV file</p>
-                        <br>
-                        <form method="post" style="display: inline;">
-                            <input type="hidden" name="action" value="export_csv">
-                            <button type="submit" class="btn btn-success">📥 Download CSV</button>
-                        </form>
-                    </div>
-
-                    <div>
-                        <h3>📥 Import Inventory</h3>
-                        <div class="file-upload">
-                            <p>Upload CSV file to import/update inventory</p>
-                            <form id="importForm" enctype="multipart/form-data">
-                                <input type="hidden" name="action" value="import_csv">
-                                <input type="file" name="csv_file" accept=".csv" required>
-                                <br>
-                                <button type="submit" class="btn btn-primary">📤 Import CSV</button>
-                            </form>
-                        </div>
-                        <div id="importResult"></div>
-                    </div>
-                </div>
-
-                <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 15px;">
-                    <h4>CSV Format Requirements:</h4>
-                    <p><strong>Columns:</strong> Product Name, Category, Subcategory, Price, Availability, Size, Stock Quantity</p>
-                    <p><strong>Availability:</strong> Use "in_stock" or "out_of_stock"</p>
-                    <p><strong>Sizes:</strong> XS, S, M, L, XL, XXL, FREE_SIZE</p>
+            <div class="modal-body">
+                <div id="historyModalContent">
+                    <div class="loading">Loading history...</div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Global variables
-        let currentInventory = [];
-
-        // Load inventory on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            loadInventory();
-        });
-
-        // Tab switching
-        function showTab(tabName) {
-            // Hide all tab contents
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-
-            // Remove active class from all tabs
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-
-            // Show selected tab content
-            document.getElementById(tabName).classList.add('active');
-
-            // Add active class to clicked tab
-            event.target.classList.add('active');
-
-            // Load data based on tab
-            if (tabName === 'reports') {
-                generateReport();
-            }
-        }
-
-        // Load inventory data
-        function loadInventory() {
-            const search = document.getElementById('searchInput').value;
-            const category = document.getElementById('categoryFilter').value;
-            const availability = document.getElementById('availabilityFilter').value;
-
-            const formData = new FormData();
-            formData.append('action', 'get_inventory');
-            formData.append('search', search);
-            formData.append('category', category);
-            formData.append('availability', availability);
-
-            fetch('', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                currentInventory = data;
-                displayInventory(data);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('inventoryTableBody').innerHTML = 
-                    '<tr><td colspan="7" style="text-align: center; color: red;">Error loading inventory</td></tr>';
-            });
-        }
-
-        // Display inventory in table
-        function displayInventory(products) {
-            const tbody = document.getElementById('inventoryTableBody');
+        function openUpdateModal(productId, productName, sizesStock) {
+            const modal = document.getElementById('updateModal');
+            const content = document.getElementById('updateModalContent');
             
-            if (products.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No products found</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = products.map(product => `
-                <tr>
-                    <td>
-                        <strong>${product.name}</strong>
-                        ${product.subcategory ? `<br><small>${product.subcategory}</small>` : ''}
-                    </td>
-                    <td>${product.category}</td>
-                    <td>$${parseFloat(product.price).toFixed(2)}</td>
-                    <td>
-                        <span style="font-weight: bold; color: ${product.total_stock > 10 ? '#28a745' : product.total_stock > 0 ? '#ffc107' : '#dc3545'}">
-                            ${product.total_stock}
-                        </span>
-                    </td>
-                    <td>${product.size_variants} variants</td>
-                    <td>
-                        <span class="status-badge status-${product.availability}">
-                            ${product.availability.replace('_', ' ')}
-                        </span>
-                    </td>
-                    <td>
-                        <button class="btn btn-secondary" onclick="viewProductDetails(${product.id})" style="font-size: 0.8rem; padding: 5px 10px;">
-                            View Details
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        // View product details (sizes and stock)
-        function viewProductDetails(productId) {
-            // Find product in current inventory
-            const product = currentInventory.find(p => p.id == productId);
-            if (!product) return;
-
-            // Fetch detailed size information
-            const formData = new FormData();
-            formData.append('action', 'get_product_sizes');
-            formData.append('product_id', productId);
-
-            // For now, we'll show a simple alert. In a real app, you'd show a modal
-            alert(`Product: ${product.name}\nTotal Stock: ${product.total_stock}\nSize Variants: ${product.size_variants}`);
-        }
-
-        // Load low stock alerts
-        function loadLowStock() {
-            const threshold = document.getElementById('thresholdInput').value;
-            const container = document.getElementById('lowStockContainer');
-
-            container.innerHTML = '<div class="loading">Loading low stock alerts...</div>';
-
-            const formData = new FormData();
-            formData.append('action', 'get_low_stock');
-            formData.append('threshold', threshold);
-
-            fetch('', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                displayLowStock(data);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                container.innerHTML = '<div class="alert alert-danger">Error loading low stock alerts</div>';
-            });
-        }
-
-        // Display low stock items
-        function displayLowStock(items) {
-            const container = document.getElementById('lowStockContainer');
-
-            if (items.length === 0) {
-                container.innerHTML = '<div class="alert alert-success">✅ No low stock items found!</div>';
-                return;
-            }
-
-            container.innerHTML = `
-                <div class="alert alert-warning">
-                    <strong>⚠️ ${items.length} items with low stock found</strong>
-                </div>
-                ${items.map(item => `
-                    <div class="low-stock-item">
-                        <strong>${item.name}</strong> (${item.category})
-                        <br>
-                        Size: ${item.size} - Stock: <strong style="color: #dc3545;">${item.stock_quantity}</strong>
-                    </div>
-                `).join('')}
-            `;
-        }
-
-        // Generate report
-        function generateReport() {
-            if (currentInventory.length === 0) {
-                loadInventory().then(() => calculateStats());
+            let html = `<h4>${productName}</h4>`;
+            html += `<input type="text" class="admin-input" id="adminName" placeholder="Admin Name" required>`;
+            html += `<input type="text" class="reason-input" id="updateReason" placeholder="Reason for stock change" required>`;
+            html += `<div class="size-update-grid">`;
+            
+            if (sizesStock) {
+                const sizes = sizesStock.split('|');
+                sizes.forEach(sizeStock => {
+                    const parts = sizeStock.split(':');
+                    if (parts.length >= 3) {
+                        const size = parts[0];
+                        const stock = parts[1];
+                        const sizeId = parts[2];
+                        
+                        html += `
+                            <div class="size-update-item">
+                                <div class="size-label">${size}</div>
+                                <div class="current-stock">Current: ${stock}</div>
+                                <input type="number" class="quantity-input" placeholder="±0" data-size-id="${sizeId}" data-product-id="${productId}">
+                                <button class="btn btn-success btn-sm" onclick="updateStock(${sizeId}, ${productId}, this)">Add</button>
+                                <button class="btn btn-danger btn-sm" onclick="updateStock(${sizeId}, ${productId}, this, true)">Deduct</button>
+                            </div>
+                        `;
+                    }
+                });
             } else {
-                calculateStats();
+                html += '<p>No size variants found for this product.</p>';
             }
+            
+            html += `</div>`;
+            content.innerHTML = html;
+            modal.style.display = 'block';
         }
 
-        // Calculate statistics
-        function calculateStats() {
-            const totalProducts = currentInventory.length;
-            const totalStock = currentInventory.reduce((sum, product) => sum + parseInt(product.total_stock), 0);
-            const lowStockCount = currentInventory.filter(product => product.total_stock <= 10).length;
-            const outOfStockCount = currentInventory.filter(product => product.total_stock === 0).length;
-
-            document.getElementById('totalProducts').textContent = totalProducts;
-            document.getElementById('totalStock').textContent = totalStock;
-            document.getElementById('lowStockCount').textContent = lowStockCount;
-            document.getElementById('outOfStockCount').textContent = outOfStockCount;
-        }
-
-        // Handle CSV import
-        document.getElementById('importForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const formData = new FormData(this);
-            const resultDiv = document.getElementById('importResult');
-
-            resultDiv.innerHTML = '<div class="loading">Importing data...</div>';
-
+        function updateStock(sizeId, productId, button, isDeduction = false) {
+            const input = button.parentElement.querySelector('.quantity-input');
+            const adminName = document.getElementById('adminName').value.trim();
+            const reason = document.getElementById('updateReason').value.trim();
+            
+            if (!adminName) {
+                alert('Please enter admin name');
+                return;
+            }
+            
+            if (!reason) {
+                alert('Please enter reason for stock change');
+                return;
+            }
+            
+            let quantity = parseInt(input.value) || 0;
+            if (quantity <= 0) {
+                alert('Please enter a valid quantity');
+                return;
+            }
+            
+            if (isDeduction) {
+                quantity = -quantity;
+            }
+            
+            const formData = new FormData();
+            formData.append('action', 'update_stock');
+            formData.append('size_id', sizeId);
+            formData.append('product_id', productId);
+            formData.append('quantity_change', quantity);
+            formData.append('reason', reason);
+            formData.append('admin_name', adminName);
+            
+            button.disabled = true;
+            button.textContent = 'Updating...';
+            
             fetch('', {
                 method: 'POST',
                 body: formData
@@ -819,35 +910,198 @@ $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    resultDiv.innerHTML = `
-                        <div class="alert alert-success">
-                            ✅ Import successful! ${data.imported} records imported.inverntory
-                            ${data.errors.length > 0 ? `<br><strong>Errors:</strong><br>${data.errors.join('<br>')}` : ''}
-                        </div>
-                    `;
-                    loadInventory(); // Refresh inventory
+                    showAlert('Stock updated successfully!', 'success');
+                    // Update the current stock display
+                    const currentStockEl = button.parentElement.querySelector('.current-stock');
+                    currentStockEl.textContent = `Current: ${data.new_stock}`;
+                    input.value = '';
+                    
+                    // Refresh page after 1 second to show updated data
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
                 } else {
-                    resultDiv.innerHTML = `<div class="alert alert-danger">❌ Import failed: ${data.message}</div>`;
+                    showAlert('Error: ' + data.error, 'error');
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                resultDiv.innerHTML = '<div class="alert alert-danger">❌ Import failed due to network error</div>';
+                showAlert('Network error occurred', 'error');
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.textContent = isDeduction ? 'Deduct' : 'Add';
+            });
+        }
+
+        function viewHistory(productId, productName) {
+            const modal = document.getElementById('historyModal');
+            const content = document.getElementById('historyModalContent');
+            
+            content.innerHTML = `<h4>${productName}</h4><div class="loading">Loading history...</div>`;
+            modal.style.display = 'block';
+            
+            const formData = new FormData();
+            formData.append('action', 'get_history');
+            formData.append('product_id', productId);
+            
+            fetch('', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    let html = `<h4>${productName}</h4>`;
+                    
+                    if (data.history.length > 0) {
+                        html += `
+                            <div class="history-table">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Size</th>
+                                            <th>Change</th>
+                                            <th>Reason</th>
+                                            <th>Admin</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+                        
+                        data.history.forEach(record => {
+                            const changeClass = record.quantity_change > 0 ? 'quantity-positive' : 'quantity-negative';
+                            const changeSymbol = record.quantity_change > 0 ? '+' : '';
+                            const date = new Date(record.created_at).toLocaleDateString() + ' ' + new Date(record.created_at).toLocaleTimeString();
+                            
+                            html += `
+                                <tr>
+                                    <td>${date}</td>
+                                    <td>${record.size || 'N/A'}</td>
+                                    <td class="${changeClass}">${changeSymbol}${record.quantity_change}</td>
+                                    <td>${record.reason}</td>
+                                    <td>${record.admin_name}</td>
+                                </tr>
+                            `;
+                        });
+                        
+                        html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+                    } else {
+                        html += '<p>No history records found for this product.</p>';
+                    }
+                    
+                    content.innerHTML = html;
+                } else {
+                    content.innerHTML = '<p>Error loading history.</p>';
+                }
+            })
+            .catch(error => {
+                content.innerHTML = '<p>Network error occurred while loading history.</p>';
+            });
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            
+            // Insert at the top of the container
+            const container = document.querySelector('.container');
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const updateModal = document.getElementById('updateModal');
+            const historyModal = document.getElementById('historyModal');
+            
+            if (event.target == updateModal) {
+                updateModal.style.display = 'none';
+            }
+            if (event.target == historyModal) {
+                historyModal.style.display = 'none';
+            }
+        }
+
+        // Auto-submit form when filters change
+        document.addEventListener('DOMContentLoaded', function() {
+            const filters = document.querySelectorAll('#main_category, #subcategory, #stock_status');
+            filters.forEach(filter => {
+                filter.addEventListener('change', function() {
+                    // Don't auto-submit on subcategory change if triggered by main category change
+                    if (this.id !== 'subcategory' || this.dataset.userChanged) {
+                        this.form.submit();
+                    }
+                    this.dataset.userChanged = false;
+                });
+            });
+            
+            // Mark subcategory changes as user-initiated
+            document.getElementById('subcategory').addEventListener('change', function() {
+                this.dataset.userChanged = true;
             });
         });
 
-        // Add search functionality with debounce
-        let searchTimeout;
-        document.getElementById('searchInput').addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                loadInventory();
-            }, 500);
+
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Escape key to close modals
+            if (e.key === 'Escape') {
+                closeModal('updateModal');
+                closeModal('historyModal');
+            }
         });
 
-        // Add filter change listeners
-        document.getElementById('categoryFilter').addEventListener('change', loadInventory);
-        document.getElementById('availabilityFilter').addEventListener('change', loadInventory);
+        // Add low stock alert on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const lowStockCount = <?php echo $lowStock; ?>;
+            const outOfStockCount = <?php echo $outOfStock; ?>;
+            
+            if (lowStockCount > 0 || outOfStockCount > 0) {
+                let message = '';
+                if (outOfStockCount > 0) {
+                    message += `⚠️ ${outOfStockCount} product(s) are out of stock. `;
+                }
+                if (lowStockCount > 0) {
+                    message += `📉 ${lowStockCount} product(s) have low stock.`;
+                }
+                
+                if (message) {
+                    setTimeout(() => {
+                        showAlert(message.trim(), 'error');
+                    }, 1000);
+                }
+            }
+        });
+
+        // Auto-refresh functionality (optional)
+        function enableAutoRefresh(minutes = 5) {
+            setInterval(() => {
+                if (!document.getElementById('updateModal').style.display === 'block' && 
+                    !document.getElementById('historyModal').style.display === 'block') {
+                    location.reload();
+                }
+            }, minutes * 60 * 1000);
+        }
+
+        // Uncomment the line below to enable auto-refresh every 5 minutes
+        // enableAutoRefresh(5);
     </script>
 </body>
 </html>

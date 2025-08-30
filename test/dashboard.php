@@ -62,7 +62,7 @@ $createTables = [
         comment TEXT,
         status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )",*/
+    )",
     "CREATE TABLE IF NOT EXISTS categories (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(100) NOT NULL UNIQUE,
@@ -70,7 +70,7 @@ $createTables = [
         image VARCHAR(500),
         is_active TINYINT(1) DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )",
+    )",*/
     "CREATE TABLE IF NOT EXISTS coupons (
         id INT AUTO_INCREMENT PRIMARY KEY,
         code VARCHAR(50) UNIQUE NOT NULL,
