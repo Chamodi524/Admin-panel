@@ -192,7 +192,7 @@ function getCategoryDisplayName($category) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Management - Dashboard</title>
+    <title>Product Management - Allura Estella</title>
     <style>
         * {
             margin: 0;
@@ -201,41 +201,106 @@ function getCategoryDisplayName($category) {
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            color: #333;
+            line-height: 1.6;
+            font-size: 20px;
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+
+        /* Formal Header - Matching Inventory Management */
+        .formal-header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            padding: 20px 0;
+            margin: -30px -30px 40px -30px;
+            position: relative;
             overflow: hidden;
         }
 
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
+        .formal-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20"><defs><linearGradient id="a" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="%23ffffff" stop-opacity="0.1"/><stop offset="1" stop-color="%23ffffff" stop-opacity="0"/></linearGradient></defs><rect width="11" height="20" fill="url(%23a)" rx="5"/><rect x="22" width="11" height="20" fill="url(%23a)" rx="5"/><rect x="44" width="11" height="20" fill="url(%23a)" rx="5"/><rect x="66" width="11" height="20" fill="url(%23a)" rx="5"/><rect x="88" width="11" height="20" fill="url(%23a)" rx="5"/></svg>') repeat;
+            opacity: 0.1;
         }
 
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+        .formal-header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 30px;
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .company-logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid rgba(255,255,255,0.3);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            flex-shrink: 0;
+        }
+
+        .header-text {
+            text-align: left;
+        }
+
+        .company-name {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .company-subtitle {
+            font-size: 16px;
+            font-weight: 300;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .system-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #45b7d1;
+            margin-bottom: 5px;
+        }
+
+        .current-date-time {
+            font-size: 14px;
+            opacity: 0.8;
             font-weight: 300;
         }
 
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-
-        .main-content {
-            padding: 30px;
+        /* Main Content Styling */
+        .content-wrapper {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
         }
 
         .controls {
@@ -255,17 +320,19 @@ function getCategoryDisplayName($category) {
 
         .search-box input {
             width: 100%;
-            padding: 15px 50px 15px 20px;
-            border: 2px solid #e0e0e0;
+            padding: 16px 20px 16px 20px;
+            border: 2px solid #e1e8ed;
             border-radius: 12px;
-            font-size: 16px;
+            font-size: 20px;
             transition: all 0.3s ease;
+            background: white;
         }
 
         .search-box input:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+            transform: translateY(-2px);
         }
 
         .search-icon {
@@ -277,56 +344,42 @@ function getCategoryDisplayName($category) {
         }
 
         .btn {
-            padding: 12px 24px;
+            padding: 16px 30px;
             border: none;
             border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
             cursor: pointer;
+            font-size: 20px;
+            font-weight: 600;
             transition: all 0.3s ease;
             text-decoration: none;
             display: inline-block;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
             color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
         }
 
         .btn-secondary {
-            background: #f8f9fa;
-            color: #495057;
-            border: 2px solid #e0e0e0;
-        }
-
-        .btn-secondary:hover {
-            background: #e9ecef;
-            border-color: #ccc;
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            color: white;
         }
 
         .btn-danger {
-            background: #dc3545;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
             color: white;
         }
 
-        .btn-danger:hover {
-            background: #c82333;
-            transform: translateY(-2px);
-        }
-
-        .btn-success {
-            background: #28a745;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #218838;
-            transform: translateY(-2px);
+        .btn-sm {
+            padding: 10px 20px;
+            font-size: 18px;
         }
 
         .products-grid {
@@ -338,16 +391,16 @@ function getCategoryDisplayName($category) {
 
         .product-card {
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
             overflow: hidden;
             transition: all 0.3s ease;
-            border: 1px solid #f0f0f0;
+            border: 1px solid rgba(255,255,255,0.2);
         }
 
         .product-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
         }
 
         .product-image {
@@ -358,7 +411,7 @@ function getCategoryDisplayName($category) {
             align-items: center;
             justify-content: center;
             color: #999;
-            font-size: 14px;
+            font-size: 18px;
             position: relative;
         }
 
@@ -370,106 +423,110 @@ function getCategoryDisplayName($category) {
 
         .product-badges {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: 15px;
+            left: 15px;
             display: flex;
-            gap: 5px;
+            gap: 8px;
         }
 
         .badge {
-            padding: 4px 8px;
-            border-radius: 20px;
-            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 25px;
+            font-size: 14px;
             font-weight: 600;
             color: white;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .badge-new {
-            background: #28a745;
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
         }
 
         .badge-sale {
-            background: #dc3545;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
         }
 
         .product-info {
-            padding: 20px;
+            padding: 25px;
         }
 
         .product-name {
-            font-size: 18px;
+            font-size: 22px;
             font-weight: 600;
-            margin-bottom: 8px;
-            color: #333;
+            margin-bottom: 10px;
+            color: #2c3e50;
         }
 
         .product-category {
             color: #666;
-            font-size: 14px;
-            margin-bottom: 10px;
+            font-size: 18px;
+            margin-bottom: 15px;
         }
 
         .product-price {
-            font-size: 20px;
+            font-size: 24px;
             font-weight: 700;
-            color: #667eea;
-            margin-bottom: 10px;
+            color: #3498db;
+            margin-bottom: 15px;
         }
 
         .product-price .original-price {
             text-decoration: line-through;
             color: #999;
-            font-size: 16px;
-            margin-left: 8px;
+            font-size: 20px;
+            margin-left: 10px;
         }
 
         .product-stock {
-            font-size: 14px;
-            margin-bottom: 15px;
+            font-size: 18px;
+            margin-bottom: 20px;
+            font-weight: 500;
         }
 
         .stock-in {
-            color: #28a745;
+            color: #27ae60;
         }
 
         .stock-out {
-            color: #dc3545;
+            color: #e74c3c;
         }
 
         .product-sizes {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
         .sizes-label {
-            font-size: 12px;
+            font-size: 16px;
             color: #666;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
 
         .sizes-list {
             display: flex;
             flex-wrap: wrap;
-            gap: 5px;
+            gap: 8px;
         }
 
         .size-tag {
-            background: #f8f9fa;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 12px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 16px;
             color: #495057;
+            border: 1px solid #dee2e6;
         }
 
         .product-actions {
             display: flex;
-            gap: 10px;
-            margin-top: 15px;
+            gap: 15px;
+            margin-top: 20px;
         }
 
         .product-actions .btn {
             flex: 1;
-            padding: 8px 12px;
-            font-size: 14px;
+            padding: 12px 20px;
+            font-size: 18px;
         }
 
         .modal {
@@ -480,48 +537,50 @@ function getCategoryDisplayName($category) {
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.5);
+            background-color: rgba(0,0,0,0.6);
             backdrop-filter: blur(5px);
         }
 
         .modal-content {
-            background-color: white;
+            background: white;
             margin: 3% auto;
             padding: 0;
             border-radius: 20px;
             width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
+            max-width: 800px;
+            max-height: 85vh;
             overflow-y: auto;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
 
         .modal-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 25px 30px;
-            border-radius: 20px 20px 0 0;
+            padding: 30px;
+            border-bottom: 2px solid #f1f3f4;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+            border-radius: 20px 20px 0 0;
         }
 
         .modal-header h2 {
             margin: 0;
-            font-size: 1.5em;
-            font-weight: 300;
+            color: #2c3e50;
+            font-size: 28px;
+            font-weight: 600;
         }
 
         .close {
-            color: white;
-            font-size: 28px;
+            color: #aaa;
+            font-size: 36px;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.3s ease;
+            line-height: 1;
+            transition: color 0.3s ease;
         }
 
         .close:hover {
-            opacity: 0.7;
+            color: #333;
         }
 
         .modal-body {
@@ -529,43 +588,46 @@ function getCategoryDisplayName($category) {
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             font-weight: 600;
-            color: #333;
+            color: #2c3e50;
+            font-size: 20px;
         }
 
         .form-group input,
         .form-group select,
         .form-group textarea {
             width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 16px;
+            padding: 16px 20px;
+            border: 2px solid #e1e8ed;
+            border-radius: 12px;
+            font-size: 20px;
             transition: all 0.3s ease;
+            background: white;
         }
 
         .form-group input:focus,
         .form-group select:focus,
         .form-group textarea:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+            transform: translateY(-2px);
         }
 
         .form-group textarea {
             resize: vertical;
-            min-height: 100px;
+            min-height: 120px;
         }
 
         .form-row {
             display: flex;
-            gap: 15px;
+            gap: 20px;
         }
 
         .form-row .form-group {
@@ -574,103 +636,145 @@ function getCategoryDisplayName($category) {
 
         .checkbox-group {
             display: flex;
-            gap: 20px;
-            margin-top: 10px;
+            gap: 30px;
+            margin-top: 15px;
         }
 
         .checkbox-item {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
 
         .checkbox-item input[type="checkbox"] {
             width: auto;
             margin: 0;
+            transform: scale(1.2);
         }
 
         .sizes-management {
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            padding: 20px;
-            background: #f8f9fa;
+            border: 2px solid #e1e8ed;
+            border-radius: 12px;
+            padding: 25px;
+            background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
         }
 
         .sizes-management h4 {
-            margin-bottom: 15px;
-            color: #333;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-size: 22px;
         }
 
         .size-row {
             display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
+            gap: 15px;
+            margin-bottom: 15px;
             align-items: center;
         }
 
         .size-row select,
         .size-row input {
             flex: 1;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+            padding: 12px 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 18px;
         }
 
         .size-row button {
-            padding: 8px 12px;
-            background: #dc3545;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
+            font-size: 18px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .size-row button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
         }
 
         .modal-footer {
-            padding: 20px 30px;
-            border-top: 1px solid #e0e0e0;
+            padding: 25px 30px;
+            border-top: 2px solid #f1f3f4;
             display: flex;
-            gap: 15px;
+            gap: 20px;
             justify-content: flex-end;
+            background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+            border-radius: 0 0 20px 20px;
         }
 
         .alert {
-            padding: 15px 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
+            padding: 20px 30px;
+            border-radius: 12px;
+            margin-bottom: 25px;
             font-weight: 500;
+            font-size: 20px;
         }
 
         .alert-success {
-            background: #d4edda;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
             color: #155724;
-            border: 1px solid #c3e6cb;
+            border: 2px solid #c3e6cb;
         }
 
         .alert-error {
-            background: #f8d7da;
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
             color: #721c24;
-            border: 1px solid #f5c6cb;
+            border: 2px solid #f5c6cb;
         }
 
         .no-products {
             text-align: center;
-            padding: 60px 20px;
+            padding: 80px 20px;
             color: #666;
         }
 
         .no-products h3 {
-            margin-bottom: 15px;
-            font-size: 1.5em;
+            margin-bottom: 20px;
+            font-size: 32px;
+            color: #2c3e50;
         }
 
-        @media (max-width: 768px) {
+        .no-products p {
+            font-size: 22px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
             .container {
-                margin: 10px;
-                border-radius: 15px;
+                padding: 20px;
             }
             
-            .main-content {
-                padding: 20px;
+            .formal-header {
+                margin: -20px -20px 30px -20px;
+                padding: 15px 0;
+            }
+
+            .formal-header-content {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .header-text {
+                text-align: center;
+            }
+            
+            .company-name {
+                font-size: 28px;
+            }
+            
+            .system-title {
+                font-size: 20px;
+            }
+            
+            .content-wrapper {
+                padding: 25px;
             }
             
             .controls {
@@ -685,6 +789,37 @@ function getCategoryDisplayName($category) {
             .products-grid {
                 grid-template-columns: 1fr;
             }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                font-size: 18px;
+            }
+            
+            .formal-header {
+                padding: 10px 0;
+            }
+
+            .company-logo {
+                width: 80px;
+                height: 80px;
+            }
+            
+            .company-name {
+                font-size: 24px;
+            }
+            
+            .company-subtitle {
+                font-size: 14px;
+            }
+            
+            .system-title {
+                font-size: 18px;
+            }
+
+            .current-date-time {
+                font-size: 12px;
+            }
             
             .form-row {
                 flex-direction: column;
@@ -694,22 +829,35 @@ function getCategoryDisplayName($category) {
                 width: 95%;
                 margin: 5% auto;
             }
+
+            .checkbox-group {
+                flex-direction: column;
+                gap: 15px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Product Management</h1>
-            <p>Manage your clothing store inventory with ease</p>
+    <!-- Formal Header -->
+    <div class="formal-header">
+        <div class="formal-header-content">
+            <img src="allura_estrella.png" alt="Allura Estrella Logo" class="company-logo">
+            <div class="header-text">
+                <h1 class="company-name">ALLURA ESTELLA</h1>
+                <p class="company-subtitle">Premium Women's Clothing & Accessories</p>
+                <h2 class="system-title">PRODUCT MANAGEMENT SYSTEM</h2>
+                <p class="current-date-time" id="currentDateTime"></p>
+            </div>
         </div>
+    </div>
 
-        <div class="main-content">
+    <div class="container">
+        <div class="content-wrapper">
             <div id="alert-container"></div>
             
             <div class="controls">
                 <div class="search-box">
-                    <input type="text" id="searchInput" placeholder="Search products...">
+                    <input type="text" id="searchInput" placeholder="Search products by name or category...">
                     <span class="search-icon">🔍</span>
                 </div>
                 <button class="btn btn-primary" onclick="openModal()">Add New Product</button>
@@ -891,7 +1039,7 @@ function getCategoryDisplayName($category) {
                                     <button type="button" onclick="removeSizeRow(this)">Remove</button>
                                 </div>
                             </div>
-                            <button type="button" onclick="addSizeRow()" class="btn btn-secondary" style="margin-top: 10px;">Add Size</button>
+                            <button type="button" onclick="addSizeRow()" class="btn btn-secondary" style="margin-top: 15px;">Add Size</button>
                         </div>
                     </div>
                 </form>
@@ -910,6 +1058,28 @@ function getCategoryDisplayName($category) {
 
         // Categories and subcategories data
         const categoriesData = <?php echo json_encode($categories); ?>;
+
+        // Update current date and time
+        function updateDateTime() {
+            const now = new Date();
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                timeZoneName: 'short'
+            };
+            document.getElementById('currentDateTime').textContent = now.toLocaleDateString('en-US', options);
+        }
+
+        // Initialize date time on load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+        });
 
         // Search functionality
         document.getElementById('searchInput').addEventListener('input', function() {
@@ -1196,9 +1366,18 @@ function getCategoryDisplayName($category) {
             }
         }
 
-        // Initialize page
+        // Add fade-in animation to cards
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Product Management Dashboard loaded successfully');
+            const cards = document.querySelectorAll('.product-card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.style.transition = 'all 0.6s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
         });
     </script>
 </body>

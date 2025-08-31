@@ -107,7 +107,7 @@ if (isset($_GET['edit'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coupons Management - Admin Panel</title>
+    <title>Coupons Management - Allura Estella</title>
     <style>
         * {
             margin: 0;
@@ -116,222 +116,293 @@ if (isset($_GET['edit'])) {
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             color: #333;
+            line-height: 1.6;
             font-size: 20px;
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 30px;
         }
 
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        /* Formal Header - Matching Product Management */
+        .formal-header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             color: white;
-            padding: 30px 0;
-            margin-bottom: 30px;
-            border-radius: 10px;
+            padding: 20px 0;
+            margin: -30px -30px 40px -30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .formal-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20"><defs><linearGradient id="a" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="%23ffffff" stop-opacity="0.1"/><stop offset="1" stop-color="%23ffffff" stop-opacity="0"/></linearGradient></defs><rect width="11" height="20" fill="url(%23a)" rx="5"/><rect x="22" width="11" height="20" fill="url(%23a)" rx="5"/><rect x="44" width="11" height="20" fill="url(%23a)" rx="5"/><rect x="66" width="11" height="20" fill="url(%23a)" rx="5"/><rect x="88" width="11" height="20" fill="url(%23a)" rx="5"/></svg>') repeat;
+            opacity: 0.1;
+        }
+
+        .formal-header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 30px;
+            position: relative;
+            z-index: 1;
             text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
         }
 
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
+        .company-logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid rgba(255,255,255,0.3);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            flex-shrink: 0;
         }
 
-        .header p {
-            font-size: 1.1rem;
+        .header-text {
+            text-align: left;
+        }
+
+        .company-name {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .company-subtitle {
+            font-size: 16px;
+            font-weight: 300;
             opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .system-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #45b7d1;
+            margin-bottom: 5px;
+        }
+
+        .current-date-time {
+            font-size: 14px;
+            opacity: 0.8;
+            font-weight: 300;
+        }
+
+        /* Main Content Styling */
+        .content-wrapper {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
         }
 
         .card {
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            padding: 25px;
-            margin-bottom: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.2);
         }
 
         .card h2 {
-            color: #4a5568;
-            margin-bottom: 20px;
-            font-size: 1.5rem;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            font-size: 28px;
+            font-weight: 600;
         }
 
         .form-row {
             display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
+            gap: 20px;
+            margin-bottom: 20px;
             flex-wrap: wrap;
         }
 
         .form-group {
             flex: 1;
-            min-width: 200px;
+            min-width: 250px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 10px;
             font-weight: 600;
-            color: #4a5568;
+            color: #2c3e50;
+            font-size: 20px;
         }
 
         .form-group input,
         .form-group select,
         .form-group textarea {
             width: 100%;
-            padding: 10px;
-            border: 2px solid #e2e8f0;
-            border-radius: 5px;
+            padding: 16px 20px;
+            border: 2px solid #e1e8ed;
+            border-radius: 12px;
             font-size: 20px;
-            transition: border-color 0.3s;
+            transition: all 0.3s ease;
+            background: white;
         }
 
         .form-group input:focus,
         .form-group select:focus,
         .form-group textarea:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+            transform: translateY(-2px);
         }
 
         .checkbox-group {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-top: 10px;
+            gap: 15px;
+            margin-top: 15px;
         }
 
         .checkbox-group input[type="checkbox"] {
             width: auto;
+            margin: 0;
+            transform: scale(1.2);
         }
 
         .btn {
-            padding: 12px 24px;
+            padding: 16px 30px;
             border: none;
-            border-radius: 5px;
+            border-radius: 12px;
             cursor: pointer;
             font-size: 20px;
             font-weight: 600;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
             text-decoration: none;
             display: inline-block;
             text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
         }
 
         .btn-primary {
-            background: #667eea;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
             color: white;
-        }
-
-        .btn-primary:hover {
-            background: #5a67d8;
-            transform: translateY(-2px);
         }
 
         .btn-success {
-            background: #48bb78;
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
             color: white;
-        }
-
-        .btn-success:hover {
-            background: #38a169;
         }
 
         .btn-danger {
-            background: #f56565;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
             color: white;
-        }
-
-        .btn-danger:hover {
-            background: #e53e3e;
         }
 
         .btn-warning {
-            background: #ed8936;
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
             color: white;
         }
 
-        .btn-warning:hover {
-            background: #dd6b20;
-        }
-
         .btn-sm {
-            padding: 6px 12px;
-            font-size: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
         }
 
         .filters {
             display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 20px;
+            margin-bottom: 25px;
             flex-wrap: wrap;
             align-items: end;
         }
 
         .table-container {
             overflow-x: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            background: white;
         }
 
         th, td {
-            padding: 12px;
+            padding: 15px 12px;
             text-align: left;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 2px solid #f1f3f4;
             font-size: 20px;
         }
 
         th {
-            background: #f7fafc;
+            background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
             font-weight: 600;
-            color: #4a5568;
+            color: #2c3e50;
         }
 
         tr:hover {
-            background: #f7fafc;
+            background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
         }
 
         .badge {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 20px;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 16px;
             font-weight: 600;
         }
 
         .badge-success {
-            background: #c6f6d5;
+            background: linear-gradient(135deg, #c6f6d5 0%, #9ae6b4 100%);
             color: #22543d;
         }
 
         .badge-danger {
-            background: #fed7d7;
+            background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
             color: #742a2a;
         }
 
         .badge-warning {
-            background: #feebc8;
+            background: linear-gradient(135deg, #feebc8 0%, #fbd38d 100%);
             color: #744210;
         }
 
         .progress-bar {
-            width: 100px;
-            height: 20px;
+            width: 120px;
+            height: 24px;
             background: #e2e8f0;
-            border-radius: 10px;
+            border-radius: 12px;
             overflow: hidden;
         }
 
         .progress-fill {
             height: 100%;
-            background: #48bb78;
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
             transition: width 0.3s;
         }
 
@@ -343,16 +414,18 @@ if (isset($_GET['edit'])) {
             top: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
         }
 
         .modal-content {
             background: white;
             margin: 5% auto;
-            padding: 20px;
-            border-radius: 10px;
+            padding: 30px;
+            border-radius: 20px;
             width: 90%;
-            max-width: 500px;
+            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
 
         .close {
@@ -361,60 +434,105 @@ if (isset($_GET['edit'])) {
             font-size: 36px;
             font-weight: bold;
             cursor: pointer;
+            line-height: 1;
+            transition: color 0.3s ease;
         }
 
         .close:hover {
-            color: #000;
+            color: #333;
         }
 
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 35px;
         }
 
         .stat-card {
             background: white;
-            padding: 20px;
-            border-radius: 10px;
+            padding: 30px;
+            border-radius: 20px;
             text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
         }
 
         .stat-number {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #667eea;
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .stat-label {
             color: #718096;
-            margin-top: 5px;
+            margin-top: 10px;
             font-size: 20px;
+            font-weight: 500;
         }
 
         .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 5px;
+            padding: 20px 30px;
+            margin-bottom: 25px;
+            border-radius: 12px;
             border-left: 4px solid;
             font-size: 20px;
+            font-weight: 500;
         }
 
         .alert-warning {
-            background: #fffbeb;
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
             border-color: #f59e0b;
             color: #92400e;
         }
 
         .alert-danger {
-            background: #fef2f2;
+            background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
             border-color: #ef4444;
             color: #dc2626;
         }
 
-        @media (max-width: 768px) {
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .formal-header {
+                margin: -20px -20px 30px -20px;
+                padding: 15px 0;
+            }
+
+            .formal-header-content {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .header-text {
+                text-align: center;
+            }
+            
+            .company-name {
+                font-size: 28px;
+            }
+            
+            .system-title {
+                font-size: 20px;
+            }
+            
+            .content-wrapper {
+                padding: 25px;
+            }
+            
             .form-row {
                 flex-direction: column;
             }
@@ -427,14 +545,61 @@ if (isset($_GET['edit'])) {
                 grid-template-columns: 1fr;
             }
         }
+
+        @media (max-width: 768px) {
+            body {
+                font-size: 18px;
+            }
+            
+            .formal-header {
+                padding: 10px 0;
+            }
+
+            .company-logo {
+                width: 80px;
+                height: 80px;
+            }
+            
+            .company-name {
+                font-size: 24px;
+            }
+            
+            .company-subtitle {
+                font-size: 14px;
+            }
+            
+            .system-title {
+                font-size: 18px;
+            }
+
+            .current-date-time {
+                font-size: 12px;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 5% auto;
+                padding: 20px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🏷️ Coupons Management</h1>
-            <p>Create, manage, and track your discount coupons</p>
+    <!-- Formal Header -->
+    <div class="formal-header">
+        <div class="formal-header-content">
+            <img src="allura_estrella.png" alt="Allura Estrella Logo" class="company-logo">
+            <div class="header-text">
+                <h1 class="company-name">ALLURA ESTELLA</h1>
+                <p class="company-subtitle">Premium Women's Clothing & Accessories</p>
+                <h2 class="system-title">COUPONS MANAGEMENT SYSTEM</h2>
+                <p class="current-date-time" id="currentDateTime"></p>
+            </div>
         </div>
+    </div>
+
+    <div class="container">
+        <div class="content-wrapper">
 
         <?php
         // Statistics
@@ -470,7 +635,7 @@ if (isset($_GET['edit'])) {
         $expiring = $pdo->query("SELECT * FROM coupons WHERE expires_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY) AND is_active = 1")->fetchAll();
         if ($expiring): ?>
             <div class="alert alert-warning">
-                <strong>⚠️ Expiring Soon:</strong> 
+                <strong>Expiring Soon:</strong> 
                 <?php foreach ($expiring as $coupon): ?>
                     <span><?= htmlspecialchars($coupon['code']) ?> (expires <?= date('M d, Y', strtotime($coupon['expires_at'])) ?>)</span>
                 <?php endforeach; ?>
@@ -479,7 +644,7 @@ if (isset($_GET['edit'])) {
 
         <!-- Create/Edit Coupon Form -->
         <div class="card">
-            <h2><?= $edit_coupon ? '✏️ Edit Coupon' : '➕ Create New Coupon' ?></h2>
+            <h2><?= $edit_coupon ? 'Edit Coupon' : 'Create New Coupon' ?></h2>
             <form method="POST" id="couponForm">
                 <input type="hidden" name="action" value="<?= $edit_coupon ? 'update' : 'create' ?>">
                 <?php if ($edit_coupon): ?>
@@ -490,7 +655,7 @@ if (isset($_GET['edit'])) {
                     <div class="form-group">
                         <label for="code">Coupon Code</label>
                         <input type="text" id="code" name="code" value="<?= $edit_coupon['code'] ?? '' ?>" required>
-                        <button type="button" class="btn btn-primary btn-sm" onclick="generateCode()" style="margin-top: 5px;">Generate Code</button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="generateCode()" style="margin-top: 10px;">Generate Code</button>
                     </div>
                     <div class="form-group">
                         <label for="discount_type">Discount Type</label>
@@ -525,7 +690,7 @@ if (isset($_GET['edit'])) {
                     <label for="is_active">Active</label>
                 </div>
 
-                <div style="margin-top: 20px;">
+                <div style="margin-top: 25px;">
                     <button type="submit" class="btn btn-primary"><?= $edit_coupon ? 'Update Coupon' : 'Create Coupon' ?></button>
                     <?php if ($edit_coupon): ?>
                         <a href="<?= $_SERVER['PHP_SELF'] ?>" class="btn btn-warning">Cancel</a>
@@ -536,7 +701,7 @@ if (isset($_GET['edit'])) {
 
         <!-- Filters and Search -->
         <div class="card">
-            <h2>🔍 Filter & Search Coupons</h2>
+            <h2>Filter & Search Coupons</h2>
             <form method="GET" class="filters">
                 <div class="form-group">
                     <label for="search">Search by Code</label>
@@ -568,7 +733,7 @@ if (isset($_GET['edit'])) {
 
         <!-- Coupons Table -->
         <div class="card">
-            <h2>📋 Coupons List</h2>
+            <h2>Coupons List</h2>
             <div class="table-container">
                 <table>
                     <thead>
@@ -632,6 +797,8 @@ if (isset($_GET['edit'])) {
                 </table>
             </div>
         </div>
+
+        </div>
     </div>
 
     <!-- Delete Confirmation Modal -->
@@ -640,7 +807,7 @@ if (isset($_GET['edit'])) {
             <span class="close" onclick="closeModal()">&times;</span>
             <h2>Confirm Delete</h2>
             <p>Are you sure you want to delete this coupon? This action cannot be undone.</p>
-            <div style="margin-top: 20px;">
+            <div style="margin-top: 25px;">
                 <button id="confirmDelete" class="btn btn-danger">Delete</button>
                 <button onclick="closeModal()" class="btn btn-warning">Cancel</button>
             </div>
@@ -648,6 +815,28 @@ if (isset($_GET['edit'])) {
     </div>
 
     <script>
+        // Update current date and time
+        function updateDateTime() {
+            const now = new Date();
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                timeZoneName: 'short'
+            };
+            document.getElementById('currentDateTime').textContent = now.toLocaleDateString('en-US', options);
+        }
+
+        // Initialize date time on load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+        });
+
         function generateCode() {
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
             let code = '';
@@ -730,6 +919,20 @@ if (isset($_GET['edit'])) {
         setTimeout(function() {
             location.reload();
         }, 300000);
+
+        // Add fade-in animation to cards
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card, .stat-card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.style.transition = 'all 0.6s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+        });
     </script>
 </body>
 </html>
