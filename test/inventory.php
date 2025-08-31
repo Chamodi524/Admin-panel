@@ -98,6 +98,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             
             echo json_encode(['success' => true, 'history' => $history]);
             exit;
+
+        case 'get_low_stock_alerts':
+            // Get products with low stock for alerts
+            $query = "
+                SELECT p.id, p.name, 
+                       ps.id as size_id, ps.size, ps.stock_quantity,
+                       CASE 
+                           WHEN ps.stock_quantity = 0 THEN 'critical'
+                           WHEN ps.stock_quantity <= 5 THEN 'critical'
+                           WHEN ps.stock_quantity <= 10 THEN 'warning'
+                           ELSE 'normal'
+                       END as alert_level
+                FROM products p
+                JOIN product_sizes ps ON p.id = ps.product_id
+                WHERE ps.stock_quantity <= 10
+                ORDER BY ps.stock_quantity ASC, p.name ASC
+            ";
+            
+            $stmt = $pdo->prepare($query);
+            $stmt->execute();
+            $lowStockItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            echo json_encode(['success' => true, 'items' => $lowStockItems]);
+            exit;
     }
 }
 
@@ -317,6 +341,176 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             font-weight: 300;
         }
 
+        /* Floating Alert System */
+        #floating-alerts {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+            pointer-events: none;
+        }
+
+        .floating-alert {
+            margin-bottom: 12px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            font-weight: 600;
+            font-size: 14px;
+            line-height: 1.4;
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: all;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .floating-alert.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .floating-alert-critical {
+            background: linear-gradient(135deg, #ff4757 0%, #ff3838 100%);
+            color: white;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .floating-alert-warning {
+            background: linear-gradient(135deg, #ffa502 0%, #ff6348 100%);
+            color: white;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .floating-alert-info {
+            background: linear-gradient(135deg, #2ed573 0%, #1e90ff 100%);
+            color: white;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .floating-alert-close {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 18px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .floating-alert-close:hover {
+            color: white;
+        }
+
+        /* Alert Status Button */
+        .alert-status-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 100%);
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            z-index: 1000;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s infinite;
+        }
+
+        .alert-status-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.3);
+        }
+
+        .alert-status-btn.has-alerts {
+            background: linear-gradient(135deg, #ff4757 0%, #ff3838 100%);
+            animation: shake 1s infinite;
+        }
+
+        .alert-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ff3838;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-3px); }
+            75% { transform: translateX(3px); }
+        }
+
+        /* Low Stock Notification Bar */
+        .stock-notification-bar {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff4757 100%);
+            color: white;
+            padding: 12px 0;
+            text-align: center;
+            font-weight: 600;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            transform: translateY(-100%);
+            transition: transform 0.3s ease;
+            font-size: 14px;
+        }
+
+        .stock-notification-bar.show {
+            transform: translateY(0);
+        }
+
+        .stock-notification-bar button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-left: 10px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s ease;
+        }
+
+        .stock-notification-bar button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
         /* Main Content Styling */
         .content-wrapper {
             background: rgba(255, 255, 255, 0.95);
@@ -524,11 +718,18 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
         .status-low-stock {
             background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
             color: #856404;
+            animation: blink 2s infinite;
         }
 
         .status-out-of-stock {
             background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
             color: #721c24;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.7; }
         }
 
         .size-stock {
@@ -540,6 +741,18 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             font-size: 18px;
             font-weight: 500;
             border: 1px solid #dee2e6;
+        }
+
+        .size-stock.low-stock {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border-color: #ffc107;
+            color: #856404;
+        }
+
+        .size-stock.out-of-stock {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            border-color: #dc3545;
+            color: #721c24;
         }
 
         .actions {
@@ -749,6 +962,20 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             .stats {
                 grid-template-columns: repeat(2, 1fr);
             }
+
+            #floating-alerts {
+                top: 10px;
+                right: 10px;
+                max-width: calc(100vw - 20px);
+            }
+
+            .alert-status-btn {
+                bottom: 20px;
+                right: 20px;
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
         }
 
         @media (max-width: 768px) {
@@ -806,10 +1033,36 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                 grid-template-columns: 1fr;
                 text-align: center;
             }
+
+            .floating-alert {
+                font-size: 13px;
+                padding: 12px 16px;
+            }
+
+            .stock-notification-bar {
+                font-size: 12px;
+                padding: 8px 0;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Stock Notification Bar -->
+    <div id="stockNotificationBar" class="stock-notification-bar">
+        <span id="notificationText">⚠️ You have items with low stock levels!</span>
+        <button onclick="hideNotificationBar()">Dismiss</button>
+        <button onclick="showLowStockItems()">View Details</button>
+    </div>
+
+    <!-- Floating Alerts Container -->
+    <div id="floating-alerts"></div>
+
+    <!-- Alert Status Button -->
+    <button id="alertStatusBtn" class="alert-status-btn" onclick="toggleAlertPanel()" title="Stock Alert Status">
+        🔔
+        <span id="alertBadge" class="alert-badge" style="display: none;">0</span>
+    </button>
+
     <!-- Formal Header -->
     <div class="formal-header">
         <div class="formal-header-content">
@@ -959,8 +1212,14 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                                             $parts = explode(':', $sizeStock);
                                             if (count($parts) >= 2) {
                                                 $size = $parts[0];
-                                                $stock = $parts[1];
-                                                echo "<span class='size-stock'>$size: $stock</span>";
+                                                $stock = (int)$parts[1];
+                                                $sizeClass = 'size-stock';
+                                                if ($stock == 0) {
+                                                    $sizeClass .= ' out-of-stock';
+                                                } elseif ($stock <= 5) {
+                                                    $sizeClass .= ' low-stock';
+                                                }
+                                                echo "<span class='$sizeClass'>$size: $stock</span>";
                                             }
                                             ?>
                                         <?php endforeach; ?>
@@ -1025,6 +1284,40 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
     </div>
 
     <script>
+        // Enhanced Alert System Configuration
+        const ALERT_CONFIG = {
+            CRITICAL_STOCK: 5,
+            LOW_STOCK: 10,
+            CHECK_INTERVAL: 30000, // 30 seconds
+            SOUND_ENABLED: true,
+            PERSISTENT_ALERTS: true
+        };
+
+        let alertInterval;
+        let currentAlerts = [];
+        let alertSound;
+
+        // Initialize alert system
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeAlertSystem();
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+            
+            // Initialize subcategories
+            updateSubcategories();
+            
+            // Check for initial alerts
+            checkLowStockAlerts();
+            
+            // Set up periodic checking
+            alertInterval = setInterval(checkLowStockAlerts, ALERT_CONFIG.CHECK_INTERVAL);
+            
+            // Create alert sound
+            if (ALERT_CONFIG.SOUND_ENABLED) {
+                createAlertSound();
+            }
+        });
+
         // Update current date and time
         function updateDateTime() {
             const now = new Date();
@@ -1041,9 +1334,226 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             document.getElementById('currentDateTime').textContent = now.toLocaleDateString('en-US', options);
         }
 
-        // Update time every second
-        setInterval(updateDateTime, 1000);
-        updateDateTime(); // Initial call
+        // Initialize alert system
+        function initializeAlertSystem() {
+            createFloatingAlertContainer();
+        }
+
+        // Create floating alert container
+        function createFloatingAlertContainer() {
+            if (document.getElementById('floating-alerts')) return;
+            
+            const container = document.createElement('div');
+            container.id = 'floating-alerts';
+            document.body.appendChild(container);
+        }
+
+        // Create alert sound
+        function createAlertSound() {
+            // Create a simple beep sound using Web Audio API
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            alertSound = {
+                play: function() {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.value = 800;
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.3);
+                }
+            };
+        }
+
+        // Check for low stock alerts
+        function checkLowStockAlerts() {
+            const formData = new FormData();
+            formData.append('action', 'get_low_stock_alerts');
+            
+            fetch('', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    processAlerts(data.items);
+                }
+            })
+            .catch(error => {
+                console.error('Error checking alerts:', error);
+            });
+        }
+
+        // Process and display alerts
+        function processAlerts(items) {
+            const criticalItems = items.filter(item => item.alert_level === 'critical');
+            const warningItems = items.filter(item => item.alert_level === 'warning');
+            
+            // Update alert badge
+            const totalAlerts = criticalItems.length + warningItems.length;
+            const alertBadge = document.getElementById('alertBadge');
+            const alertBtn = document.getElementById('alertStatusBtn');
+            
+            if (totalAlerts > 0) {
+                alertBadge.textContent = totalAlerts;
+                alertBadge.style.display = 'flex';
+                alertBtn.classList.add('has-alerts');
+                
+                // Show notification bar
+                showNotificationBar(totalAlerts);
+                
+                // Play sound for critical alerts
+                if (criticalItems.length > 0 && ALERT_CONFIG.SOUND_ENABLED) {
+                    playAlertSound();
+                }
+                
+                // Show floating alerts for new critical items
+                showCriticalAlerts(criticalItems);
+                
+            } else {
+                alertBadge.style.display = 'none';
+                alertBtn.classList.remove('has-alerts');
+                hideNotificationBar();
+            }
+            
+            currentAlerts = items;
+        }
+
+        // Show critical alerts as floating notifications
+        function showCriticalAlerts(criticalItems) {
+            // Group by product
+            const productGroups = {};
+            criticalItems.forEach(item => {
+                if (!productGroups[item.id]) {
+                    productGroups[item.id] = {
+                        name: item.name,
+                        sizes: []
+                    };
+                }
+                productGroups[item.id].sizes.push({
+                    size: item.size,
+                    stock: item.stock_quantity
+                });
+            });
+            
+            // Show one alert per product
+            Object.values(productGroups).forEach((product, index) => {
+                const sizesText = product.sizes.map(s => `${s.size}: ${s.stock}`).join(', ');
+                const message = `🚨 CRITICAL: ${product.name}\nSizes (${sizesText}) are critically low!`;
+                
+                setTimeout(() => {
+                    showFloatingAlert(message, 'critical', 8000, true);
+                }, index * 1000);
+            });
+        }
+
+        // Show floating alert
+        function showFloatingAlert(message, type = 'info', duration = 5000, persistent = false) {
+            const container = document.getElementById('floating-alerts');
+            
+            const alert = document.createElement('div');
+            alert.className = `floating-alert floating-alert-${type}`;
+            alert.innerHTML = `
+                <div style="white-space: pre-line; margin-right: 20px;">${message}</div>
+                <button class="floating-alert-close" onclick="this.parentElement.remove()">&times;</button>
+            `;
+            
+            container.appendChild(alert);
+            
+            // Animate in
+            setTimeout(() => {
+                alert.classList.add('show');
+            }, 100);
+            
+            // Auto remove if not persistent
+            if (!persistent && duration > 0) {
+                setTimeout(() => {
+                    removeFloatingAlert(alert);
+                }, duration);
+            }
+            
+            return alert;
+        }
+
+        // Remove floating alert
+        function removeFloatingAlert(alert) {
+            alert.classList.remove('show');
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.parentNode.removeChild(alert);
+                }
+            }, 500);
+        }
+
+        // Show notification bar
+        function showNotificationBar(count) {
+            const bar = document.getElementById('stockNotificationBar');
+            const text = document.getElementById('notificationText');
+            
+            text.innerHTML = `⚠️ You have ${count} item${count > 1 ? 's' : ''} with low stock levels!`;
+            bar.classList.add('show');
+        }
+
+        // Hide notification bar
+        function hideNotificationBar() {
+            const bar = document.getElementById('stockNotificationBar');
+            bar.classList.remove('show');
+        }
+
+        // Show low stock items in detail
+        function showLowStockItems() {
+            if (currentAlerts.length === 0) {
+                showFloatingAlert('No low stock alerts at the moment', 'info', 3000);
+                return;
+            }
+            
+            let message = '📊 LOW STOCK ITEMS:\n\n';
+            
+            const criticalItems = currentAlerts.filter(item => item.alert_level === 'critical');
+            const warningItems = currentAlerts.filter(item => item.alert_level === 'warning');
+            
+            if (criticalItems.length > 0) {
+                message += '🚨 CRITICAL (≤5 units):\n';
+                criticalItems.forEach(item => {
+                    message += `• ${item.name} (${item.size}): ${item.stock_quantity} units\n`;
+                });
+                message += '\n';
+            }
+            
+            if (warningItems.length > 0) {
+                message += '⚠️ LOW STOCK (≤10 units):\n';
+                warningItems.forEach(item => {
+                    message += `• ${item.name} (${item.size}): ${item.stock_quantity} units\n`;
+                });
+            }
+            
+            showFloatingAlert(message, criticalItems.length > 0 ? 'critical' : 'warning', 10000, true);
+        }
+
+        // Play alert sound
+        function playAlertSound() {
+            if (alertSound) {
+                try {
+                    alertSound.play();
+                } catch (error) {
+                    console.log('Could not play alert sound:', error);
+                }
+            }
+        }
+
+        // Toggle alert panel
+        function toggleAlertPanel() {
+            showLowStockItems();
+        }
 
         // Update subcategories based on main category selection
         function updateSubcategories() {
@@ -1110,18 +1620,18 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             const reason = document.getElementById('updateReason').value.trim();
             
             if (!adminName) {
-                showAlert('Please enter admin name', 'error');
+                showFloatingAlert('Please enter admin name', 'warning', 3000);
                 return;
             }
             
             if (!reason) {
-                showAlert('Please enter reason for stock change', 'error');
+                showFloatingAlert('Please enter reason for stock change', 'warning', 3000);
                 return;
             }
             
             let quantity = parseInt(input.value) || 0;
             if (quantity <= 0) {
-                showAlert('Please enter a valid quantity', 'error');
+                showFloatingAlert('Please enter a valid quantity', 'warning', 3000);
                 return;
             }
             
@@ -1147,22 +1657,27 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showAlert('Stock updated successfully!', 'success');
+                    showFloatingAlert('Stock updated successfully!', 'info', 3000);
                     // Update the current stock display
                     const currentStockEl = button.parentElement.querySelector('.current-stock');
                     currentStockEl.textContent = `Current: ${data.new_stock} units`;
                     input.value = '';
+                    
+                    // Check for alerts after update
+                    setTimeout(() => {
+                        checkLowStockAlerts();
+                    }, 1000);
                     
                     // Refresh page after 2 seconds to show updated data
                     setTimeout(() => {
                         location.reload();
                     }, 2000);
                 } else {
-                    showAlert('Error: ' + data.error, 'error');
+                    showFloatingAlert('Error: ' + data.error, 'critical', 5000);
                 }
             })
             .catch(error => {
-                showAlert('Network error occurred', 'error');
+                showFloatingAlert('Network error occurred', 'critical', 5000);
             })
             .finally(() => {
                 button.disabled = false;
@@ -1246,20 +1761,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
         }
 
         function showAlert(message, type) {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type}`;
-            alertDiv.textContent = message;
-            
-            // Insert at the top of the content wrapper
-            const contentWrapper = document.querySelector('.content-wrapper');
-            contentWrapper.insertBefore(alertDiv, contentWrapper.firstChild);
-            
-            // Auto remove after 5 seconds
-            setTimeout(() => {
-                if (alertDiv.parentNode) {
-                    alertDiv.parentNode.removeChild(alertDiv);
-                }
-            }, 5000);
+            showFloatingAlert(message, type === 'success' ? 'info' : 'critical', 5000);
         }
 
         // Close modal when clicking outside
@@ -1293,39 +1795,44 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                 this.dataset.userChanged = true;
             });
 
-            // Show stock alerts
-            const lowStockCount = <?php echo $lowStock; ?>;
-            const outOfStockCount = <?php echo $outOfStock; ?>;
-            
-            if (lowStockCount > 0 || outOfStockCount > 0) {
-                let message = '';
+            // Initial stock alerts check with delay
+            setTimeout(() => {
+                const lowStockCount = <?php echo $lowStock; ?>;
+                const outOfStockCount = <?php echo $outOfStock; ?>;
+                
                 if (outOfStockCount > 0) {
-                    message += `${outOfStockCount} product(s) are completely out of stock! `;
-                }
-                if (lowStockCount > 0) {
-                    message += `${lowStockCount} product(s) have low stock levels.`;
+                    showFloatingAlert(`🚨 URGENT: ${outOfStockCount} product(s) are completely out of stock!`, 'critical', 8000, true);
                 }
                 
-                if (message) {
-                    setTimeout(() => {
-                        showAlert(message.trim(), 'error');
-                    }, 2000);
+                if (lowStockCount > 0) {
+                    showFloatingAlert(`⚠️ WARNING: ${lowStockCount} product(s) have low stock levels`, 'warning', 6000, true);
                 }
-            }
+            }, 2000);
         });
 
         // Keyboard shortcuts
         document.addEventListener('keydown', function(e) {
-            // Escape key to close modals
+            // Escape key to close modals and alerts
             if (e.key === 'Escape') {
                 closeModal('updateModal');
                 closeModal('historyModal');
+                hideNotificationBar();
+                
+                // Close all floating alerts
+                const alerts = document.querySelectorAll('.floating-alert');
+                alerts.forEach(alert => removeFloatingAlert(alert));
             }
             
             // Ctrl+F to focus search
             if (e.ctrlKey && e.key === 'f') {
                 e.preventDefault();
                 document.getElementById('search').focus();
+            }
+            
+            // Ctrl+A to show alerts
+            if (e.ctrlKey && e.key === 'a') {
+                e.preventDefault();
+                showLowStockItems();
             }
         });
 
@@ -1350,6 +1857,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                     this.style.backgroundColor = '#f8f9ff';
                     this.style.transform = 'scale(1.01)';
                     this.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
+                    this.style.transition = 'all 0.3s ease';
                 });
                 
                 row.addEventListener('mouseleave', function() {
@@ -1367,7 +1875,7 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Inventory Report - Elegance Fashion</title>
+                    <title>Inventory Report - Allura Estella</title>
                     <style>
                         body { font-family: Arial, sans-serif; font-size: 12px; }
                         table { width: 100%; border-collapse: collapse; margin: 20px 0; }
@@ -1377,14 +1885,24 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
                         .status-in-stock { color: green; }
                         .status-low-stock { color: orange; }
                         .status-out-of-stock { color: red; }
+                        .alert-summary { background: #fff3cd; padding: 15px; margin: 20px 0; border-radius: 5px; }
                     </style>
                 </head>
                 <body>
                     <div class="header">
-                        <h1>ELEGANCE FASHION</h1>
+                        <h1>ALLURA ESTELLA</h1>
                         <h2>Inventory Report</h2>
                         <p>Generated on: ${new Date().toLocaleString()}</p>
                     </div>
+                    
+                    <div class="alert-summary">
+                        <h3>Stock Alert Summary</h3>
+                        <p><strong>Total Products:</strong> <?php echo $totalProducts; ?></p>
+                        <p><strong>In Stock:</strong> <?php echo $inStock; ?> products</p>
+                        <p><strong>Low Stock:</strong> <?php echo $lowStock; ?> products</p>
+                        <p><strong>Out of Stock:</strong> <?php echo $outOfStock; ?> products</p>
+                    </div>
+                    
                     <table>
                         <thead>
                             <tr>
@@ -1420,8 +1938,76 @@ $products = getProductsWithStock($pdo, $search, $mainCategoryFilter, $subCategor
             printWindow.print();
         }
 
-        // Add print button (you can add this to your UI if needed)
-        // document.querySelector('.table-header').innerHTML += '<button onclick="printInventoryReport()" class="btn btn-info" style="float: right;">Print Report</button>';
+        // Browser notification support
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission().then(function(permission) {
+                    if (permission === 'granted') {
+                        showFloatingAlert('Browser notifications enabled for stock alerts!', 'info', 3000);
+                    }
+                });
+            }
+        }
+
+        // Show browser notification for critical alerts
+        function showBrowserNotification(title, body) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                const notification = new Notification(title, {
+                    body: body,
+                    icon: 'allura_estrella.png',
+                    badge: 'allura_estrella.png',
+                    requireInteraction: true,
+                    tag: 'stock-alert'
+                });
+
+                notification.onclick = function() {
+                    window.focus();
+                    notification.close();
+                    showLowStockItems();
+                };
+
+                setTimeout(() => {
+                    notification.close();
+                }, 10000);
+            }
+        }
+
+        // Enhanced alert processing with browser notifications
+        function processAlertsWithNotifications(items) {
+            processAlerts(items);
+            
+            const criticalItems = items.filter(item => item.alert_level === 'critical');
+            if (criticalItems.length > 0) {
+                const title = 'Critical Stock Alert - Allura Estella';
+                const body = `${criticalItems.length} item(s) are critically low on stock!`;
+                showBrowserNotification(title, body);
+            }
+        }
+
+        // Initialize notification permission on first user interaction
+        document.addEventListener('click', function() {
+            requestNotificationPermission();
+        }, { once: true });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (alertInterval) {
+                clearInterval(alertInterval);
+            }
+        });
+
+        // Add context menu for quick actions
+        document.addEventListener('contextmenu', function(e) {
+            // Add custom context menu functionality if needed
+        });
+
+        // PWA support - Service Worker registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                // Register service worker for offline functionality
+                // navigator.serviceWorker.register('/sw.js');
+            });
+        }
     </script>
 </body>
 </html>
