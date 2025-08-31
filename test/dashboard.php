@@ -392,8 +392,8 @@ $recentActivities = $pdo->query("SELECT * FROM admin_logs ORDER BY created_at DE
 <body>
     <div class="sidebar">
         <div class="sidebar-header">
-            <h2>🛍️ Admin Panel</h2>
-            <p>Clothing Store Management</p>
+            <h2>🛍️  ALLURA ESTELLA</h2>
+            <p>Admin Panel</p>
         </div>
         <ul class="sidebar-menu">
             <li><a href="dashboard.php" class="active">📊 Dashboard</a></li>
