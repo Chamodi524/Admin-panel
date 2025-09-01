@@ -450,7 +450,7 @@ $recentActivities = $pdo->query("SELECT * FROM admin_logs ORDER BY created_at DE
             <div class="card">
                 <div class="card-icon">💰</div>
                 <div class="card-title">Total Revenue</div>
-                <div class="card-value">$<?php echo number_format($totalRevenue, 2); ?></div>
+                <div class="card-value">Rs.<?php echo number_format($totalRevenue, 2); ?></div>
                 <div class="card-subtitle">From paid orders</div>
             </div>
 
