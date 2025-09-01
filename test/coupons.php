@@ -340,10 +340,39 @@ if (isset($_GET['edit'])) {
             align-items: end;
         }
 
+        /* Responsive Table Styling */
         .table-container {
             overflow-x: auto;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            width: 100%;
+            position: relative;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            min-height: 0.01%;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e0 #f7fafc;
+        }
+
+        .table-responsive::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .table-responsive::-webkit-scrollbar-track {
+            background: #f7fafc;
+            border-radius: 4px;
+        }
+
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 4px;
+        }
+
+        .table-responsive::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
         }
 
         table {
@@ -351,6 +380,7 @@ if (isset($_GET['edit'])) {
             border-collapse: collapse;
             margin-top: 20px;
             background: white;
+            min-width: 1400px; /* Ensures table doesn't compress too much */
         }
 
         th, td {
@@ -358,16 +388,34 @@ if (isset($_GET['edit'])) {
             text-align: left;
             border-bottom: 2px solid #f1f3f4;
             font-size: 20px;
+            vertical-align: middle;
         }
 
         th {
             background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
             font-weight: 600;
             color: #2c3e50;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
         tr:hover {
             background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+        }
+
+        /* Action buttons styling for table */
+        .actions-cell {
+            min-width: 280px;
+            white-space: nowrap;
+        }
+
+        .actions-cell .btn {
+            margin: 2px;
+            padding: 8px 14px;
+            font-size: 16px;
+            min-width: 75px;
+            display: inline-block;
         }
 
         .badge {
@@ -375,6 +423,7 @@ if (isset($_GET['edit'])) {
             border-radius: 25px;
             font-size: 16px;
             font-weight: 600;
+            white-space: nowrap;
         }
 
         .badge-success {
@@ -500,6 +549,26 @@ if (isset($_GET['edit'])) {
             color: #dc2626;
         }
 
+        /* Table scroll indicator */
+        .table-container::after {
+            content: '← Scroll horizontally to see more →';
+            position: absolute;
+            bottom: 10px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .table-container:hover::after {
+            opacity: 1;
+        }
+
         /* Responsive Design */
         @media (max-width: 1024px) {
             .container {
@@ -544,6 +613,17 @@ if (isset($_GET['edit'])) {
             .stats {
                 grid-template-columns: 1fr;
             }
+
+            table {
+                min-width: 1200px;
+            }
+
+            .actions-cell .btn {
+                padding: 6px 10px;
+                font-size: 14px;
+                min-width: 65px;
+                margin: 1px;
+            }
         }
 
         @media (max-width: 768px) {
@@ -581,6 +661,59 @@ if (isset($_GET['edit'])) {
                 margin: 5% auto;
                 padding: 20px;
             }
+
+            table {
+                font-size: 16px;
+                min-width: 1000px;
+            }
+
+            th, td {
+                padding: 10px 8px;
+                font-size: 16px;
+            }
+
+            .actions-cell {
+                min-width: 240px;
+            }
+
+            .actions-cell .btn {
+                padding: 4px 8px;
+                font-size: 12px;
+                min-width: 55px;
+                margin: 1px;
+            }
+
+            .table-container::after {
+                content: '← Swipe to see more →';
+                font-size: 10px;
+                bottom: 5px;
+                right: 10px;
+                padding: 3px 8px;
+            }
+        }
+
+        /* Code cell styling */
+        .code-cell {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-weight: 700;
+            color: #2c3e50;
+            min-width: 120px;
+        }
+
+        /* Usage cell styling */
+        .usage-cell {
+            min-width: 140px;
+        }
+
+        /* Status cell styling */
+        .status-cell {
+            min-width: 100px;
+        }
+
+        /* Date cells styling */
+        .date-cell {
+            min-width: 130px;
+            font-size: 18px;
         }
     </style>
 </head>
@@ -735,66 +868,68 @@ if (isset($_GET['edit'])) {
         <div class="card">
             <h2>Coupons List</h2>
             <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Code</th>
-                            <th>Type</th>
-                            <th>Value</th>
-                            <th>Min Order</th>
-                            <th>Usage</th>
-                            <th>Status</th>
-                            <th>Expires</th>
-                            <th>Created</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($coupons as $coupon): ?>
-                            <?php
-                            $is_expired = $coupon['expires_at'] && strtotime($coupon['expires_at']) < time();
-                            $is_active = $coupon['is_active'] && !$is_expired;
-                            $usage_percentage = $coupon['max_uses'] ? ($coupon['used_count'] / $coupon['max_uses']) * 100 : 0;
-                            ?>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
                             <tr>
-                                <td><strong><?= htmlspecialchars($coupon['code']) ?></strong></td>
-                                <td><?= ucfirst($coupon['discount_type']) ?></td>
-                                <td>
-                                    <?= $coupon['discount_type'] === 'percentage' ? $coupon['discount_value'] . '%' : 'Rs.' . number_format($coupon['discount_value'], 2) ?>
-                                </td>
-                                <td>Rs.<?= number_format($coupon['min_order_amount'], 2) ?></td>
-                                <td>
-                                    <?= $coupon['used_count'] ?><?= $coupon['max_uses'] ? '/' . $coupon['max_uses'] : '' ?>
-                                    <?php if ($coupon['max_uses']): ?>
-                                        <div class="progress-bar">
-                                            <div class="progress-fill" style="width: <?= min($usage_percentage, 100) ?>%"></div>
-                                        </div>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if ($is_expired): ?>
-                                        <span class="badge badge-danger">Expired</span>
-                                    <?php elseif ($is_active): ?>
-                                        <span class="badge badge-success">Active</span>
-                                    <?php else: ?>
-                                        <span class="badge badge-warning">Inactive</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?= $coupon['expires_at'] ? date('M d, Y H:i', strtotime($coupon['expires_at'])) : 'Never' ?>
-                                </td>
-                                <td><?= date('M d, Y', strtotime($coupon['created_at'])) ?></td>
-                                <td>
-                                    <a href="?edit=<?= $coupon['id'] ?>" class="btn btn-warning btn-sm">Edit</a>
-                                    <button onclick="toggleStatus(<?= $coupon['id'] ?>)" class="btn btn-primary btn-sm">
-                                        <?= $coupon['is_active'] ? 'Disable' : 'Enable' ?>
-                                    </button>
-                                    <button onclick="deleteCoupon(<?= $coupon['id'] ?>)" class="btn btn-danger btn-sm">Delete</button>
-                                </td>
+                                <th>Code</th>
+                                <th>Type</th>
+                                <th>Value</th>
+                                <th>Min Order</th>
+                                <th>Usage</th>
+                                <th>Status</th>
+                                <th>Expires</th>
+                                <th>Created</th>
+                                <th>Actions</th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($coupons as $coupon): ?>
+                                <?php
+                                $is_expired = $coupon['expires_at'] && strtotime($coupon['expires_at']) < time();
+                                $is_active = $coupon['is_active'] && !$is_expired;
+                                $usage_percentage = $coupon['max_uses'] ? ($coupon['used_count'] / $coupon['max_uses']) * 100 : 0;
+                                ?>
+                                <tr>
+                                    <td class="code-cell"><?= htmlspecialchars($coupon['code']) ?></td>
+                                    <td><?= ucfirst($coupon['discount_type']) ?></td>
+                                    <td>
+                                        <?= $coupon['discount_type'] === 'percentage' ? $coupon['discount_value'] . '%' : 'Rs.' . number_format($coupon['discount_value'], 2) ?>
+                                    </td>
+                                    <td>Rs.<?= number_format($coupon['min_order_amount'], 2) ?></td>
+                                    <td class="usage-cell">
+                                        <?= $coupon['used_count'] ?><?= $coupon['max_uses'] ? '/' . $coupon['max_uses'] : '' ?>
+                                        <?php if ($coupon['max_uses']): ?>
+                                            <div class="progress-bar" style="margin-top: 5px;">
+                                                <div class="progress-fill" style="width: <?= min($usage_percentage, 100) ?>%"></div>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="status-cell">
+                                        <?php if ($is_expired): ?>
+                                            <span class="badge badge-danger">Expired</span>
+                                        <?php elseif ($is_active): ?>
+                                            <span class="badge badge-success">Active</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-warning">Inactive</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="date-cell">
+                                        <?= $coupon['expires_at'] ? date('M d, Y H:i', strtotime($coupon['expires_at'])) : 'Never' ?>
+                                    </td>
+                                    <td class="date-cell"><?= date('M d, Y', strtotime($coupon['created_at'])) ?></td>
+                                    <td class="actions-cell">
+                                        <a href="?edit=<?= $coupon['id'] ?>" class="btn btn-warning btn-sm">Edit</a>
+                                        <button onclick="toggleStatus(<?= $coupon['id'] ?>)" class="btn btn-primary btn-sm">
+                                            <?= $coupon['is_active'] ? 'Disable' : 'Enable' ?>
+                                        </button>
+                                        <button onclick="deleteCoupon(<?= $coupon['id'] ?>)" class="btn btn-danger btn-sm">Delete</button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -932,6 +1067,21 @@ if (isset($_GET['edit'])) {
                     card.style.transform = 'translateY(0)';
                 }, index * 100);
             });
+        });
+
+        // Show scroll indicator on mobile
+        document.addEventListener('DOMContentLoaded', function() {
+            const tableContainer = document.querySelector('.table-responsive');
+            if (tableContainer) {
+                const showScrollIndicator = () => {
+                    if (tableContainer.scrollWidth > tableContainer.clientWidth) {
+                        tableContainer.parentElement.style.setProperty('--show-scroll-indicator', '1');
+                    }
+                };
+                
+                showScrollIndicator();
+                window.addEventListener('resize', showScrollIndicator);
+            }
         });
     </script>
 </body>
